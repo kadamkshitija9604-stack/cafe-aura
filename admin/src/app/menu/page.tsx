@@ -190,7 +190,7 @@ export default function MenuPage() {
           action: 'MENU_CREATE',
           resourceType: 'menu',
           resourceId: created.id,
-          details: `Created new menu item "${name}" ($${payload.price})`,
+          details: `Created new menu item "${name}" (₹${payload.price})`,
         });
         success('Menu Item Created', `${name} added to menu.`);
       }
@@ -616,18 +616,18 @@ export default function MenuPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Input
-                label="Base Price ($) *"
+                label="Base Price (₹) *"
                 type="number"
-                step="0.01"
+                step="1"
                 value={price}
                 onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
                 required
               />
 
               <Input
-                label="Discount / Promo Price ($)"
+                label="Discount / Promo Price (₹)"
                 type="number"
-                step="0.01"
+                step="1"
                 value={discountPrice ?? ''}
                 onChange={(e) =>
                   setDiscountPrice(e.target.value ? parseFloat(e.target.value) : null)

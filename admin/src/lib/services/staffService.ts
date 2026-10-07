@@ -1,5 +1,6 @@
 import { StaffMember } from '@/types/staff';
 import { INITIAL_STAFF } from '@/lib/utils/mockData';
+import { getAuthHeaders } from '@/lib/apiClient';
 
 const STAFF_KEY = 'cafe_aura_staff';
 
@@ -20,7 +21,10 @@ function saveLocalStaff(data: StaffMember[]) {
 export const staffService = {
   async getStaff(): Promise<StaffMember[]> {
     try {
-      const res = await fetch('/api/staff', { cache: 'no-store' });
+      const res = await fetch('/api/staff', {
+        cache: 'no-store',
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         saveLocalStaff(data);
@@ -36,7 +40,7 @@ export const staffService = {
     try {
       const res = await fetch('/api/staff', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(staff),
       });
       if (res.ok) {
@@ -61,7 +65,7 @@ export const staffService = {
     try {
       const res = await fetch('/api/staff', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ id, ...updates }),
       });
       if (res.ok) return;
@@ -78,6 +82,7 @@ export const staffService = {
     try {
       const res = await fetch(`/api/staff?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const current = getLocalStaff();

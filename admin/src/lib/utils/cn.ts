@@ -5,8 +5,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number, currency = 'USD', symbol = '$') {
-  return `${symbol}${amount.toFixed(2)}`;
+export function formatCurrency(amount: number, currency = 'INR', symbol = '₹') {
+  return `${symbol}${Number(amount).toFixed(2)}`;
 }
 
 export function formatDate(dateString: string) {

@@ -1,5 +1,6 @@
 import { MenuItem, MenuCategory } from '@/types/menu';
 import { INITIAL_CATEGORIES, INITIAL_MENU_ITEMS } from '@/lib/utils/mockData';
+import { getAuthHeaders } from '@/lib/apiClient';
 
 const CATEGORIES_KEY = 'cafe_aura_categories';
 const MENU_KEY = 'cafe_aura_menu_items';
@@ -36,7 +37,10 @@ export const menuService = {
   // --- CATEGORIES ---
   async getCategories(): Promise<MenuCategory[]> {
     try {
-      const res = await fetch('/api/categories', { cache: 'no-store' });
+      const res = await fetch('/api/categories', {
+        cache: 'no-store',
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         saveLocalCategories(data);
@@ -52,7 +56,7 @@ export const menuService = {
     try {
       const res = await fetch('/api/categories', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(category),
       });
       if (res.ok) {
@@ -79,7 +83,7 @@ export const menuService = {
     try {
       const res = await fetch('/api/categories', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ id, ...updates }),
       });
       if (res.ok) return;
@@ -96,6 +100,7 @@ export const menuService = {
     try {
       const res = await fetch(`/api/categories?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -113,7 +118,10 @@ export const menuService = {
   // --- MENU ITEMS ---
   async getMenuItems(): Promise<MenuItem[]> {
     try {
-      const res = await fetch('/api/menu', { cache: 'no-store' });
+      const res = await fetch('/api/menu', {
+        cache: 'no-store',
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         saveLocalMenuItems(data);
@@ -129,7 +137,7 @@ export const menuService = {
     try {
       const res = await fetch('/api/menu', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(item),
       });
       if (res.ok) {
@@ -154,7 +162,7 @@ export const menuService = {
     try {
       const res = await fetch('/api/menu', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ id, ...updates }),
       });
       if (res.ok) return;
@@ -171,6 +179,7 @@ export const menuService = {
     try {
       const res = await fetch(`/api/menu?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const current = getLocalMenuItems();

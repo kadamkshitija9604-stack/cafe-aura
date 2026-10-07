@@ -11,6 +11,7 @@ import { MenuItem, MenuCategory } from '@/types/menu';
 import { StaffMember } from '@/types/staff';
 import { AuditLog } from '@/types/audit';
 import { formatCurrency, formatDate } from '@/lib/utils/cn';
+import { getAuthHeaders } from '@/lib/apiClient';
 import { StatusBadge, RoleBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import {
@@ -60,14 +61,18 @@ export default function DashboardPage() {
         setAuditLogs(logs);
 
         // Fetch live order analytics
-        const orderRes = await fetch('/api/orders?analytics=true');
+        const orderRes = await fetch('/api/orders?analytics=true', {
+          headers: getAuthHeaders(),
+        });
         if (orderRes.ok) {
           const json = await orderRes.json();
           if (json?.data) setOrderAnalytics(json.data);
         }
 
         // Fetch low stock count
-        const invRes = await fetch('/api/inventory?lowStockOnly=true');
+        const invRes = await fetch('/api/inventory?lowStockOnly=true', {
+          headers: getAuthHeaders(),
+        });
         if (invRes.ok) {
           const json = await invRes.json();
           if (json?.data) setLowStockCount(json.data.length || 0);
@@ -123,8 +128,8 @@ export default function DashboardPage() {
               <div className="text-3xl font-bold font-display text-emerald-400">
                 ₹{Number(orderAnalytics.todayRevenue).toFixed(2)}
               </div>
-              <div className="flex items-center gap-2 text-xs mt-2 text-aura-300">
-                <span className="text-zinc-400">{orderAnalytics.completedTodayCount} orders completed today</span>
+              <div className="flex items-center gap-2 text-xs mt-2 text-aura-300 font-medium">
+                <span className="text-aura-200">{orderAnalytics.completedTodayCount} orders completed today</span>
               </div>
             </div>
           </div>
@@ -135,10 +140,10 @@ export default function DashboardPage() {
             className="bg-espresso-900/80 border border-aura-800/80 hover:border-caramel-500/40 rounded-2xl p-5 shadow-lg flex flex-col justify-between transition-colors block"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-aura-400">
+              <span className="text-xs font-semibold uppercase tracking-wider text-aura-300">
                 Active Orders
               </span>
-              <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
+              <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-500 border border-amber-500/30">
                 <ShoppingBag className="w-5 h-5" />
               </div>
             </div>
@@ -146,7 +151,7 @@ export default function DashboardPage() {
               <div className="text-3xl font-bold font-display text-aura-50">
                 {orderAnalytics.activeOrdersCount}
               </div>
-              <div className="text-xs mt-2 text-amber-400 font-medium">
+              <div className="text-xs mt-2 text-amber-600 font-bold">
                 In preparation & ready →
               </div>
             </div>
@@ -158,13 +163,13 @@ export default function DashboardPage() {
             className="bg-espresso-900/80 border border-aura-800/80 hover:border-rose-500/40 rounded-2xl p-5 shadow-lg flex flex-col justify-between transition-colors block"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-aura-400">
+              <span className="text-xs font-semibold uppercase tracking-wider text-aura-300">
                 Low Stock Alerts
               </span>
               <div className={`p-2.5 rounded-xl border ${
                 lowStockCount > 0
-                  ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse'
-                  : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                  ? 'bg-rose-500/15 text-rose-500 border-rose-500/30 animate-pulse'
+                  : 'bg-espresso-950 text-aura-300 border-aura-800'
               }`}>
                 <Boxes className="w-5 h-5" />
               </div>

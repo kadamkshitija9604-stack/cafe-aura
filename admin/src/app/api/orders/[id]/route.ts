@@ -9,6 +9,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const authResult = await enforcePermission(req, 'orders:view');
+    if (!authResult.authorized) return authResult.response;
+
     const order = await getOrderById(params.id);
     if (!order) {
       return apiError(`Order '${params.id}' not found`, 404, 'ORDER_NOT_FOUND');
@@ -16,7 +19,7 @@ export async function GET(
     return apiSuccess(order);
   } catch (error: any) {
     console.error(`API Error /api/orders/${params.id} GET:`, error);
-    return apiError(error.message, 500);
+    return apiError('Failed to fetch order', 500);
   }
 }
 

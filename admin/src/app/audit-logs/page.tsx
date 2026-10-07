@@ -5,11 +5,12 @@ import { AdminLayout } from '@/components/layout/AdminLayout';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { auditService } from '@/lib/services/auditService';
 import { AuditLog, AuditAction, ResourceType } from '@/types/audit';
-import { RoleBadge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { formatDate } from '@/lib/utils/cn';
-import { Search, History, Filter, Eye, Shield } from 'lucide-react';
+import { Search, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const ITEMS_PER_PAGE = 8;
 
 export default function AuditLogsPage() {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ export default function AuditLogsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedResource, setSelectedResource] = useState<string>('all');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     async function loadLogs() {
@@ -35,6 +37,11 @@ export default function AuditLogsPage() {
     loadLogs();
   }, []);
 
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedResource]);
+
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       const matchesSearch =
@@ -50,12 +57,19 @@ export default function AuditLogsPage() {
     });
   }, [logs, searchQuery, selectedResource]);
 
+  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE) || 1;
+
+  const paginatedLogs = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredLogs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredLogs, currentPage]);
+
   const getActionBadgeColor = (action: AuditAction) => {
     if (action.includes('CREATE')) return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
     if (action.includes('DELETE')) return 'bg-red-500/15 text-red-400 border-red-500/30';
     if (action.includes('UPDATE') || action.includes('TOGGLE')) return 'bg-blue-500/15 text-blue-400 border-blue-500/30';
     if (action.includes('AUTH')) return 'bg-purple-500/15 text-purple-400 border-purple-500/30';
-    return 'bg-zinc-500/15 text-zinc-400 border-zinc-500/30';
+    return 'bg-stone-100 text-stone-800 border-stone-300';
   };
 
   return (
@@ -63,10 +77,10 @@ export default function AuditLogsPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold font-display text-aura-50">
-            System Audit Trail ({logs.length})
+            System Audit Trail ({filteredLogs.length})
           </h1>
           <p className="text-xs text-aura-300 mt-1">
-            Immutable log of all administrative actions, data modifications, and authentication events
+            Immutable log of all administrative actions, data modifications, and authentication events (8 per page)
           </p>
         </div>
 
@@ -102,7 +116,7 @@ export default function AuditLogsPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-espresso-950/80 text-[11px] font-semibold text-aura-400 uppercase tracking-wider border-b border-aura-800/80">
                 <tr>
-                  <th className="px-5 py-3.5">Timestamp</th>
+                  <th className="px-5 py-3.5 min-w-[150px]">Timestamp</th>
                   <th className="px-5 py-3.5">Administrator</th>
                   <th className="px-5 py-3.5">Action</th>
                   <th className="px-5 py-3.5">Resource</th>
@@ -111,14 +125,14 @@ export default function AuditLogsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-aura-800/50 text-xs">
-                {filteredLogs.length === 0 ? (
+                {paginatedLogs.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center text-aura-400">
                       No audit log entries found.
                     </td>
                   </tr>
                 ) : (
-                  filteredLogs.map((log) => (
+                  paginatedLogs.map((log) => (
                     <tr key={log.id} className="hover:bg-aura-900/20 transition-colors">
                       <td className="px-5 py-3.5 text-aura-300 font-mono text-[11px] whitespace-nowrap">
                         {formatDate(log.timestamp)}
@@ -162,6 +176,70 @@ export default function AuditLogsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {filteredLogs.length > 0 && (
+            <div className="p-4 border-t border-aura-800/80 bg-espresso-950/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <p className="text-aura-400">
+                Showing <span className="font-semibold text-aura-200">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to{' '}
+                <span className="font-semibold text-aura-200">
+                  {Math.min(currentPage * ITEMS_PER_PAGE, filteredLogs.length)}
+                </span>{' '}
+                of <span className="font-semibold text-aura-200">{filteredLogs.length}</span> records
+              </p>
+
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 rounded-lg border border-aura-800 bg-espresso-900 text-aura-300 hover:text-aura-50 hover:bg-aura-800/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 font-medium text-xs"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>Prev</span>
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 rounded-lg font-mono text-xs font-semibold transition-all ${
+                            currentPage === page
+                              ? 'bg-caramel-500 text-espresso-950 shadow-sm font-bold'
+                              : 'border border-aura-800 bg-espresso-900 text-aura-300 hover:text-aura-50 hover:bg-aura-800/50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <span key={page} className="px-1 text-aura-500 text-xs">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  })}
+
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 rounded-lg border border-aura-800 bg-espresso-900 text-aura-300 hover:text-aura-50 hover:bg-aura-800/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 font-medium text-xs"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Audit Inspection Modal */}

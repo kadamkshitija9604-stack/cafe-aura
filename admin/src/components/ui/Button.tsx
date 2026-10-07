@@ -14,11 +14,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const baseStyles = "inline-flex items-center justify-center font-medium rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-aura-500/40 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]";
     
     const variants = {
-      primary: "bg-gradient-to-r from-caramel-500 to-aura-600 text-espresso-950 hover:brightness-110 shadow-lg shadow-caramel-500/20 font-semibold",
-      secondary: "bg-aura-800/40 text-aura-100 hover:bg-aura-800/60 border border-aura-700/40",
-      outline: "border border-aura-700/50 text-aura-200 hover:bg-aura-900/50 hover:text-aura-50 hover:border-aura-500/60",
-      danger: "bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30",
-      ghost: "text-aura-300 hover:text-aura-50 hover:bg-aura-900/40",
+      primary: "bg-gradient-to-r from-caramel-500 to-caramel-600 text-white hover:brightness-105 shadow-md shadow-caramel-500/20 font-semibold",
+      secondary: "bg-aura-900 text-aura-100 hover:bg-aura-800 border border-aura-800",
+      outline: "border border-aura-700/80 text-aura-200 hover:bg-aura-900 hover:text-aura-50 hover:border-aura-500",
+      danger: "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200",
+      ghost: "text-aura-300 hover:text-aura-50 hover:bg-aura-900/60",
     };
 
     const sizes = {

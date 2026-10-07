@@ -1,5 +1,6 @@
 import { AuditLog, AuditAction, ResourceType } from '@/types/audit';
 import { INITIAL_AUDIT_LOGS } from '@/lib/utils/mockData';
+import { getAuthHeaders } from '@/lib/apiClient';
 
 const AUDIT_KEY = 'cafe_aura_audit_logs';
 
@@ -20,7 +21,10 @@ function saveLocalLogs(data: AuditLog[]) {
 export const auditService = {
   async getLogs(maxRecords = 100): Promise<AuditLog[]> {
     try {
-      const res = await fetch(`/api/audit-logs?limit=${maxRecords}`, { cache: 'no-store' });
+      const res = await fetch(`/api/audit-logs?limit=${maxRecords}`, {
+        cache: 'no-store',
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         saveLocalLogs(data);
@@ -46,7 +50,7 @@ export const auditService = {
     try {
       const res = await fetch('/api/audit-logs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(params),
       });
       if (res.ok) return;

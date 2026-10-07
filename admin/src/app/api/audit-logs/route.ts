@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { AuditLog } from '@/types/audit';
+import { apiSuccess, apiError } from '@/lib/apiResponse';
+import { enforcePermission, getAuthContext } from '@/lib/permissions/authGuard';
 
 export async function GET(req: NextRequest) {
   try {
+    const authResult = await enforcePermission(req, 'audit:view');
+    if (!authResult.authorized) return authResult.response;
+
     const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50', 10)));
 
     const rows = await query<AuditLog>(`
       SELECT 
@@ -27,24 +32,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(rows);
   } catch (error: any) {
     console.error('API Error /api/audit-logs GET:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError('Failed to fetch audit logs', 500);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = getAuthContext(req);
+    if (!auth) {
+      return apiError('Unauthorized: Authentication required to log actions', 401);
+    }
+
     const body = await req.json();
-    const id = body.id || `log-${Date.now()}`;
-    const {
-      userId,
-      userName,
-      userEmail,
-      userRole,
-      action,
-      resourceType,
-      resourceId,
-      details,
-    } = body;
+    const id = body.id || `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const { action, resourceType, resourceId, details } = body;
+
+    if (!action || !resourceType) {
+      return apiError('Action and resourceType are required', 400);
+    }
 
     const rows = await query<AuditLog>(`
       INSERT INTO audit_logs (
@@ -65,19 +70,19 @@ export async function POST(req: NextRequest) {
         timestamp
     `, [
       id,
-      userId || 'system',
-      userName || 'System User',
-      userEmail || 'admin@cafeaura.com',
-      userRole || 'super_admin',
+      auth.userId,
+      auth.userName,
+      auth.userEmail,
+      auth.role,
       action,
       resourceType,
       resourceId || null,
-      details
+      details || ''
     ]);
 
     return NextResponse.json(rows[0], { status: 201 });
   } catch (error: any) {
     console.error('API Error /api/audit-logs POST:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError('Failed to record audit log', 500);
   }
 }

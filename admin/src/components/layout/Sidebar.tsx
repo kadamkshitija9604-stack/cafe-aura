@@ -196,17 +196,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="p-3 border-t border-aura-800/60 bg-espresso-900/30">
           <div className="flex items-center justify-between p-2 rounded-xl">
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="w-8 h-8 rounded-full bg-aura-800 border border-aura-700 flex items-center justify-center text-xs font-bold text-aura-200 shrink-0">
-                {user?.photoURL ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={user.photoURL}
-                    alt={user.displayName}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  user?.displayName?.[0] || 'A'
-                )}
+              <div className="w-8 h-8 rounded-full bg-caramel-500/15 border border-caramel-500/30 flex items-center justify-center text-xs font-bold text-caramel-300 shrink-0">
+                {user?.displayName?.[0]?.toUpperCase() || 'A'}
               </div>
               <div className="overflow-hidden">
                 <p className="text-xs font-semibold text-aura-100 truncate">

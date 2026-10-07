@@ -6,6 +6,9 @@ import { enforcePermission } from '@/lib/permissions/authGuard';
 
 export async function GET(req: NextRequest) {
   try {
+    const authResult = await enforcePermission(req, 'orders:view');
+    if (!authResult.authorized) return authResult.response;
+
     const { searchParams } = new URL(req.url);
     const isAnalytics = searchParams.get('analytics') === 'true';
 
@@ -23,7 +26,7 @@ export async function GET(req: NextRequest) {
     return apiSuccess(result.orders, 200, { total: result.totalCount, limit, offset });
   } catch (error: any) {
     console.error('API Error /api/orders GET:', error);
-    return apiError(error.message || 'Failed to fetch orders', 500, 'FETCH_ORDERS_FAILED');
+    return apiError('Failed to fetch orders', 500, 'FETCH_ORDERS_FAILED');
   }
 }
 
@@ -48,6 +51,6 @@ export async function POST(req: NextRequest) {
     return apiSuccess(order, 201);
   } catch (error: any) {
     console.error('API Error /api/orders POST:', error);
-    return apiError(error.message || 'Failed to create order', 500, 'CREATE_ORDER_FAILED');
+    return apiError('Failed to create order', 500, 'CREATE_ORDER_FAILED');
   }
 }

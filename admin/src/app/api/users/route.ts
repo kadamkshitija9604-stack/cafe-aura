@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { AdminUser } from '@/types/user';
+import { apiSuccess, apiError } from '@/lib/apiResponse';
+import { enforcePermission } from '@/lib/permissions/authGuard';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const authResult = await enforcePermission(req, 'users:view');
+    if (!authResult.authorized) return authResult.response;
+
     const rows = await query<AdminUser>(`
       SELECT 
         id as uid,
@@ -21,15 +26,26 @@ export async function GET() {
     return NextResponse.json(rows);
   } catch (error: any) {
     console.error('API Error /api/users GET:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError('Failed to fetch users', 500);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const authResult = await enforcePermission(req, 'users:manage_roles', {
+      action: 'USER_CREATED',
+      resourceType: 'user',
+      details: 'Created new administrative user profile',
+    });
+    if (!authResult.authorized) return authResult.response;
+
     const body = await req.json();
     const id = body.uid || body.id || `user-${Date.now()}`;
-    const { email, displayName, photoURL, role = 'admin', status = 'active', providerId = 'password' } = body;
+    const { email, displayName, photoURL, role = 'staff', status = 'active', providerId = 'password' } = body;
+
+    if (!email) {
+      return apiError('Email address is required', 400);
+    }
 
     const rows = await query<AdminUser>(`
       INSERT INTO users (id, email, display_name, photo_url, role, status, provider_id)
@@ -51,23 +67,30 @@ export async function POST(req: NextRequest) {
         provider_id as "providerId",
         created_at as "createdAt",
         last_login_at as "lastLoginAt"
-    `, [id, email, displayName, photoURL || null, role, status, providerId]);
+    `, [id, email, displayName || email.split('@')[0], photoURL || null, role, status, providerId]);
 
     return NextResponse.json(rows[0], { status: 201 });
   } catch (error: any) {
     console.error('API Error /api/users POST:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError('Failed to create user', 500);
   }
 }
 
 export async function PUT(req: NextRequest) {
   try {
+    const authResult = await enforcePermission(req, 'users:manage_roles', {
+      action: 'USER_UPDATED',
+      resourceType: 'user',
+      details: 'Updated administrative user role or status',
+    });
+    if (!authResult.authorized) return authResult.response;
+
     const body = await req.json();
     const id = body.uid || body.id;
     const { role, status, displayName, photoURL } = body;
 
     if (!id) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+      return apiError('User ID is required', 400);
     }
 
     const rows = await query<AdminUser>(`
@@ -92,12 +115,12 @@ export async function PUT(req: NextRequest) {
     `, [id, role, status, displayName, photoURL]);
 
     if (rows.length === 0) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return apiError('User not found', 404);
     }
 
     return NextResponse.json(rows[0]);
   } catch (error: any) {
     console.error('API Error /api/users PUT:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError('Failed to update user', 500);
   }
 }

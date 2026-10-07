@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { ImageUploader } from '@/components/ui/ImageUploader';
 import { StatusBadge, RoleBadge } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils/cn';
 import {
@@ -325,22 +324,14 @@ export default function StaffPage() {
                   filteredStaff.map((staff) => (
                     <tr key={staff.id} className="hover:bg-aura-900/20 transition-colors">
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={staff.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
-                            alt={staff.fullName}
-                            className="w-10 h-10 rounded-full object-cover bg-espresso-950 border border-aura-800 shrink-0"
-                          />
-                          <div>
-                            <p className="font-semibold text-aura-50 flex items-center gap-2">
-                              {staff.fullName}
-                              <span className="font-mono text-[10px] text-caramel-400 bg-caramel-500/10 px-1.5 py-0.5 rounded">
-                                {staff.employeeId}
-                              </span>
-                            </p>
-                            <p className="text-[11px] text-aura-400">{staff.position}</p>
-                          </div>
+                        <div>
+                          <p className="font-semibold text-aura-50 flex items-center gap-2">
+                            {staff.fullName}
+                            <span className="font-mono text-[10px] text-caramel-400 bg-caramel-500/10 px-1.5 py-0.5 rounded">
+                              {staff.employeeId}
+                            </span>
+                          </p>
+                          <p className="text-[11px] text-aura-400">{staff.position}</p>
                         </div>
                       </td>
 
@@ -505,14 +496,6 @@ export default function StaffPage() {
                 </select>
               </div>
             </div>
-
-            {/* Profile Photo */}
-            <ImageUploader
-              value={photoUrl}
-              onChange={setPhotoUrl}
-              folder="staff"
-              label="Staff Profile Photo"
-            />
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>

@@ -1,10 +1,13 @@
 import { CafeSettings, WebsiteSettings } from '@/types/settings';
 import { INITIAL_CAFE_SETTINGS, INITIAL_WEBSITE_SETTINGS } from '@/lib/utils/mockData';
+import { getAuthHeaders } from '@/lib/apiClient';
 
 export const settingsService = {
   async getCafeSettings(): Promise<CafeSettings> {
     try {
-      const res = await fetch('/api/settings?key=general');
+      const res = await fetch('/api/settings?key=general', {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const json = await res.json();
         if (json?.data) return json.data;
@@ -24,7 +27,7 @@ export const settingsService = {
     try {
       await fetch('/api/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ key: 'general', value: settings }),
       });
     } catch {}
@@ -36,7 +39,9 @@ export const settingsService = {
 
   async getWebsiteSettings(): Promise<WebsiteSettings> {
     try {
-      const res = await fetch('/api/settings?key=website');
+      const res = await fetch('/api/settings?key=website', {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const json = await res.json();
         if (json?.data) return json.data;
@@ -56,7 +61,7 @@ export const settingsService = {
     try {
       await fetch('/api/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ key: 'website', value: settings }),
       });
     } catch {}

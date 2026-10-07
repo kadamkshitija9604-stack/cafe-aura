@@ -1,6 +1,7 @@
 import { AdminUser, UserStatus } from '@/types/user';
 import { Role } from '@/types/rbac';
 import { INITIAL_USERS } from '@/lib/utils/mockData';
+import { getAuthHeaders } from '@/lib/apiClient';
 
 const USERS_KEY = 'cafe_aura_users';
 
@@ -21,7 +22,10 @@ function saveLocalUsers(data: AdminUser[]) {
 export const userService = {
   async getUsers(): Promise<AdminUser[]> {
     try {
-      const res = await fetch('/api/users', { cache: 'no-store' });
+      const res = await fetch('/api/users', {
+        cache: 'no-store',
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         saveLocalUsers(data);
@@ -37,7 +41,7 @@ export const userService = {
     try {
       const res = await fetch('/api/users', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ id: uid, role }),
       });
       if (res.ok) return;
@@ -53,7 +57,7 @@ export const userService = {
     try {
       const res = await fetch('/api/users', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ id: uid, status }),
       });
       if (res.ok) return;

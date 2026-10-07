@@ -17,22 +17,41 @@ export type AuthResult =
 
 /**
  * Extracts and verifies caller authentication context from HTTP request.
+ * Returns null if no valid credentials/identity are provided.
  */
 export function getAuthContext(req: NextRequest): AuthContext | null {
   const roleHeader = req.headers.get('x-user-role') as Role | null;
-  const userId = req.headers.get('x-user-id') || 'demo-admin-01';
-  const userEmail = req.headers.get('x-user-email') || 'admin@cafeaura.com';
-  const userName = req.headers.get('x-user-name') || 'Admin User';
+  const userId = req.headers.get('x-user-id');
+  const userEmail = req.headers.get('x-user-email');
+  const userName = req.headers.get('x-user-name');
 
-  // If no explicit role header is passed, default to super_admin in local dev/demo environment
-  const effectiveRole: Role = roleHeader && ROLE_DEFINITIONS[roleHeader] ? roleHeader : 'super_admin';
+  // Check Bearer Token if present
+  const authHeader = req.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    // In demo/dev, token can encode role or user ID
+    if (token) {
+      return {
+        userId: userId || 'auth-user',
+        userEmail: userEmail || 'user@cafeaura.com',
+        userName: userName || 'Authenticated User',
+        role: (roleHeader && ROLE_DEFINITIONS[roleHeader] ? roleHeader : 'admin') as Role,
+      };
+    }
+  }
 
-  return {
-    userId,
-    userEmail,
-    userName,
-    role: effectiveRole,
-  };
+  // If explicit role and user headers are provided and role is valid in RBAC dictionary
+  if (roleHeader && ROLE_DEFINITIONS[roleHeader] && userId) {
+    return {
+      userId,
+      userEmail: userEmail || 'user@cafeaura.com',
+      userName: userName || 'Admin User',
+      role: roleHeader,
+    };
+  }
+
+  // If no valid auth identity provided, do NOT elevate or default to super_admin
+  return null;
 }
 
 /**

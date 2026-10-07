@@ -32,7 +32,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     const orderId = `ord-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const orderNumber = await generateOrderNumber();
 
-    // 1. Calculate and verify item pricing server-side
+    // 1. Calculate and verify item pricing server-side from authoritative DB records
     let calculatedTotal = 0;
     const verifiedItems: {
       menuItemId: string | null;
@@ -44,25 +44,42 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
 
     for (const item of input.items) {
       let price = item.unitPrice;
+      let matchedName = item.itemName.replace(/<[^>]*>?/gm, '').trim(); // Strip HTML tags
+      let menuItemId: string | null = item.menuItemId || null;
 
-      if (item.menuItemId) {
-        const itemRes = await client.query(
-          'SELECT price, discount_price, name FROM menu_items WHERE id = $1',
-          [item.menuItemId]
+      // Query database for authoritative price
+      let itemRes;
+      if (menuItemId) {
+        itemRes = await client.query(
+          'SELECT id, price, discount_price, name, is_available FROM menu_items WHERE id = $1',
+          [menuItemId]
         );
-        if (itemRes.rows.length > 0) {
-          const row = itemRes.rows[0];
-          price = parseFloat(row.discount_price || row.price);
-        }
+      } else {
+        itemRes = await client.query(
+          'SELECT id, price, discount_price, name, is_available FROM menu_items WHERE LOWER(name) = LOWER($1)',
+          [matchedName]
+        );
       }
 
-      const qty = Math.max(1, item.quantity);
-      const subtotal = price * qty;
+      if (itemRes && itemRes.rows.length > 0) {
+        const row = itemRes.rows[0];
+        if (!row.is_available) {
+          throw new Error(`Item '${row.name}' is currently unavailable`);
+        }
+        price = parseFloat(row.discount_price || row.price);
+        matchedName = row.name;
+        menuItemId = row.id;
+      } else if (price <= 0) {
+        throw new Error(`Invalid price for item '${matchedName}'`);
+      }
+
+      const qty = Math.max(1, Math.min(50, Math.floor(item.quantity))); // Bound quantity between 1 and 50
+      const subtotal = Math.round(price * qty * 100) / 100;
       calculatedTotal += subtotal;
 
       verifiedItems.push({
-        menuItemId: item.menuItemId || null,
-        itemName: item.itemName,
+        menuItemId,
+        itemName: matchedName,
         unitPrice: price,
         quantity: qty,
         subtotal,
@@ -72,6 +89,11 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     const taxAmount = Math.round(calculatedTotal * 0.05 * 100) / 100; // 5% GST/Tax
     const deliveryFee = input.orderType === 'delivery' ? 40.0 : 0.0;
     const finalAmount = Math.round((calculatedTotal + taxAmount + deliveryFee) * 100) / 100;
+
+    // Sanitize string inputs
+    const cleanCustomerName = input.customerName.replace(/<[^>]*>?/gm, '').trim();
+    const cleanDeliveryAddress = input.deliveryAddress ? input.deliveryAddress.replace(/<[^>]*>?/gm, '').trim() : null;
+    const cleanNotes = input.notes ? input.notes.replace(/<[^>]*>?/gm, '').trim() : null;
 
     // 2. Insert Order record
     const orderRes = await client.query(`
@@ -92,17 +114,17 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     `, [
       orderId,
       orderNumber,
-      input.customerName,
-      input.customerEmail || null,
-      input.customerPhone,
+      cleanCustomerName,
+      input.customerEmail ? input.customerEmail.trim() : null,
+      input.customerPhone.trim(),
       input.orderType,
-      input.deliveryAddress || null,
+      cleanDeliveryAddress,
       calculatedTotal,
       taxAmount,
       finalAmount,
       input.paymentMethod === 'cash' ? 'pending' : 'paid',
       input.paymentMethod || 'cash',
-      input.notes || null,
+      cleanNotes,
     ]);
 
     // 3. Insert Order Items

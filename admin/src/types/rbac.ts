@@ -65,7 +65,7 @@ export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
     id: 'super_admin',
     name: 'Super Admin',
     description: 'Complete unrestricted access to all modules, orders, inventory, users, permissions, and settings.',
-    badgeColor: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+    badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
     permissions: [
       'dashboard:view', 'analytics:view',
       'menu:view', 'menu:create', 'menu:edit', 'menu:delete', 'menu:toggle_status',
@@ -84,7 +84,7 @@ export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
     id: 'admin',
     name: 'Admin',
     description: 'Full operational control over menu, orders, inventory, staff, categories, and cafe settings.',
-    badgeColor: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
     permissions: [
       'dashboard:view', 'analytics:view',
       'menu:view', 'menu:create', 'menu:edit', 'menu:delete', 'menu:toggle_status',
@@ -103,7 +103,7 @@ export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
     id: 'manager',
     name: 'Manager',
     description: 'Oversees daily operations, incoming orders, stock replenishment, and staff directory.',
-    badgeColor: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     permissions: [
       'dashboard:view', 'analytics:view',
       'menu:view', 'menu:create', 'menu:edit', 'menu:toggle_status',
@@ -120,7 +120,7 @@ export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
     id: 'menu_manager',
     name: 'Menu Manager',
     description: 'Dedicated to adding, pricing, updating, and categorizing menu items & inventory tracking.',
-    badgeColor: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
     permissions: [
       'dashboard:view',
       'menu:view', 'menu:create', 'menu:edit', 'menu:delete', 'menu:toggle_status',
@@ -133,7 +133,7 @@ export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
     id: 'staff_manager',
     name: 'Staff Manager',
     description: 'Manages staff profiles, schedules, shifts, and team status.',
-    badgeColor: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
+    badgeColor: 'bg-cyan-50 text-cyan-700 border-cyan-200',
     permissions: [
       'dashboard:view',
       'staff:view', 'staff:create', 'staff:edit', 'staff:delete', 'staff:view_sensitive',
@@ -144,7 +144,7 @@ export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
     id: 'staff',
     name: 'Staff',
     description: 'Operational view to process incoming orders, view recipes, and check stock levels.',
-    badgeColor: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
+    badgeColor: 'bg-orange-50 text-orange-700 border-orange-200',
     permissions: [
       'dashboard:view',
       'orders:view', 'orders:edit',
@@ -159,7 +159,7 @@ export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
     id: 'viewer',
     name: 'Viewer',
     description: 'Read-only access to dashboard statistics and public menu directory.',
-    badgeColor: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/30',
+    badgeColor: 'bg-stone-100 text-stone-600 border-stone-200',
     permissions: [
       'dashboard:view',
       'menu:view',

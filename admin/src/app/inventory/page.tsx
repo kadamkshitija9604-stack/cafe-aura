@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { AdminLayout } from '@/components/layout/AdminLayout';
 import {
   Boxes,
   Search,
-  Plus,
   ArrowUpDown,
   AlertTriangle,
   History,
@@ -12,9 +12,13 @@ import {
   RefreshCw,
   Package,
   ArrowDownRight,
-  ArrowUpRight
+  ArrowUpRight,
+  Plus
 } from 'lucide-react';
+import { Input } from '@/components/ui/Input';
 import { InventoryItem, InventoryLedgerEntry, LedgerChangeType } from '@/types/inventory';
+import { formatDate } from '@/lib/utils/cn';
+import { getAuthHeaders } from '@/lib/apiClient';
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -28,7 +32,7 @@ export default function InventoryPage() {
   // Adjustment Modal
   const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null);
   const [adjustType, setAdjustType] = useState<LedgerChangeType>('restock');
-  const [adjustQuantity, setAdjustQuantity] = useState<string>('10');
+  const [adjustQuantity, setAdjustQuantity] = useState<string>('');
   const [adjustNotes, setAdjustNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -40,7 +44,9 @@ export default function InventoryPage() {
       if (categoryFilter !== 'all') url += `&category=${categoryFilter}`;
       if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
 
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const json = await res.json();
         setItems(json.data || []);
@@ -54,7 +60,9 @@ export default function InventoryPage() {
 
   const fetchLedger = async () => {
     try {
-      const res = await fetch('/api/inventory?ledger=true&limit=100');
+      const res = await fetch('/api/inventory?ledger=true&limit=100', {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const json = await res.json();
         setLedger(json.data || []);
@@ -87,14 +95,13 @@ export default function InventoryPage() {
       return;
     }
 
-    // If wastage or sale, quantity change is negative
     const actualChange = adjustType === 'restock' || adjustType === 'return' ? Math.abs(qty) : -Math.abs(qty);
 
     setIsSubmitting(true);
     try {
       const res = await fetch('/api/inventory', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           inventoryId: adjustItem.id,
           changeType: adjustType,
@@ -104,7 +111,6 @@ export default function InventoryPage() {
       });
 
       if (res.ok) {
-        const json = await res.json();
         showToast(`Stock updated for ${adjustItem.itemName} (${actualChange > 0 ? '+' : ''}${actualChange} ${adjustItem.unit})`);
         setAdjustItem(null);
         setAdjustNotes('');
@@ -121,163 +127,225 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Toast */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 bg-zinc-900 border border-amber-500/40 text-amber-300 px-4 py-3 rounded-xl shadow-2xl z-50 flex items-center gap-2 text-sm">
-          <CheckCircle2 className="w-4 h-4 text-amber-400" />
-          {toastMessage}
-        </div>
-      )}
+    <AdminLayout requiredPermission="inventory:view">
+      <div className="space-y-6">
+        {/* Toast */}
+        {toastMessage && (
+          <div className="fixed bottom-6 right-6 bg-espresso-950 border border-caramel-500/60 text-caramel-300 px-4 py-3 rounded-xl shadow-2xl z-50 flex items-center gap-2 text-sm font-medium">
+            <CheckCircle2 className="w-4 h-4 text-caramel-400" />
+            {toastMessage}
+          </div>
+        )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-100 flex items-center gap-2.5">
-            <Boxes className="w-6 h-6 text-amber-400" />
-            Inventory & Stock Ledger
-          </h1>
-          <p className="text-sm text-zinc-400 mt-1">
-            Track ingredients, packaging, stock thresholds, and transaction audit trails.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab('inventory')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-              activeTab === 'inventory'
-                ? 'bg-amber-500 text-zinc-950 font-bold shadow-lg shadow-amber-500/20'
-                : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-            }`}
-          >
-            <Package className="w-3.5 h-3.5 inline mr-1.5" />
-            Stock Items
-          </button>
-          <button
-            onClick={() => setActiveTab('ledger')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-              activeTab === 'ledger'
-                ? 'bg-amber-500 text-zinc-950 font-bold shadow-lg shadow-amber-500/20'
-                : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-            }`}
-          >
-            <History className="w-3.5 h-3.5 inline mr-1.5" />
-            Ledger History
-          </button>
-        </div>
-      </div>
-
-      {activeTab === 'inventory' ? (
-        <>
-          {/* Filters */}
-          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-              {['all', 'ingredient', 'packaging', 'beverage_base'].map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategoryFilter(cat)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap capitalize transition-all ${
-                    categoryFilter === cat
-                      ? 'bg-zinc-800 text-amber-400 border border-amber-500/30'
-                      : 'bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80'
-                  }`}
-                >
-                  {cat.replace('_', ' ')}
-                </button>
-              ))}
-
-              <button
-                onClick={() => setLowStockOnly(!lowStockOnly)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                  lowStockOnly
-                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
-                    : 'bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80'
-                }`}
-              >
-                <AlertTriangle className="w-3.5 h-3.5" />
-                Low Stock Only
-              </button>
-            </div>
-
-            <div className="relative min-w-[260px]">
-              <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search item or SKU..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && fetchInventory()}
-                className="w-full pl-10 pr-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 text-sm placeholder-zinc-500 focus:outline-none focus:border-amber-500 transition-colors"
-              />
-            </div>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold font-display text-aura-50 flex items-center gap-2.5">
+              <Boxes className="w-6 h-6 text-caramel-400" />
+              Inventory & Stock Ledger
+            </h1>
+            <p className="text-xs sm:text-sm text-aura-300 mt-1">
+              Track ingredients, packaging, stock thresholds, and transaction audit trails
+            </p>
           </div>
 
-          {/* Table */}
-          <div className="rounded-2xl bg-zinc-900/60 border border-zinc-800/80 overflow-hidden shadow-xl">
+          <div className="inline-flex rounded-xl bg-espresso-950 border border-aura-800 p-1">
+            <button
+              onClick={() => setActiveTab('inventory')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                activeTab === 'inventory'
+                  ? 'bg-caramel-500 text-espresso-950 shadow-sm font-bold'
+                  : 'text-aura-300 hover:text-aura-100'
+              }`}
+            >
+              <Package className="w-3.5 h-3.5" />
+              Stock Items
+            </button>
+            <button
+              onClick={() => setActiveTab('ledger')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                activeTab === 'ledger'
+                  ? 'bg-caramel-500 text-espresso-950 shadow-sm font-bold'
+                  : 'text-aura-300 hover:text-aura-100'
+              }`}
+            >
+              <History className="w-3.5 h-3.5" />
+              Ledger History
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'inventory' ? (
+          <>
+            {/* Filters Bar */}
+            <div className="bg-espresso-900/80 border border-aura-800/80 rounded-2xl p-4 shadow-lg flex flex-col md:flex-row gap-3">
+              <div className="flex-1">
+                <Input
+                  placeholder="Search item name or SKU..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchInventory()}
+                  icon={<Search className="w-4 h-4" />}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {['all', 'ingredient', 'packaging', 'beverage_base'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoryFilter(cat)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium capitalize transition-all border ${
+                      categoryFilter === cat
+                        ? 'bg-caramel-500/20 text-caramel-300 border-caramel-500/50 font-bold'
+                        : 'bg-espresso-950 text-aura-300 border-aura-800 hover:text-aura-100'
+                    }`}
+                  >
+                    {cat.replace('_', ' ')}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setLowStockOnly(!lowStockOnly)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all border ${
+                    lowStockOnly
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 font-bold'
+                      : 'bg-espresso-950 text-aura-300 border-aura-800 hover:text-aura-100'
+                  }`}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Low Stock Only
+                </button>
+              </div>
+            </div>
+
+            {/* Inventory Table */}
+            <div className="bg-espresso-900/80 border border-aura-800/80 rounded-2xl shadow-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-espresso-950/80 text-[11px] font-semibold uppercase tracking-wider text-aura-400 border-b border-aura-800/80">
+                    <tr>
+                      <th className="py-3.5 px-5">Item Name</th>
+                      <th className="py-3.5 px-5">SKU</th>
+                      <th className="py-3.5 px-5">Category</th>
+                      <th className="py-3.5 px-5">Current Stock</th>
+                      <th className="py-3.5 px-5">Threshold</th>
+                      <th className="py-3.5 px-5">Cost/Unit</th>
+                      <th className="py-3.5 px-5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-aura-800/50 text-xs">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-aura-300">
+                          <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-caramel-400" />
+                          Loading inventory records...
+                        </td>
+                      </tr>
+                    ) : items.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-aura-400">
+                          No inventory items found.
+                        </td>
+                      </tr>
+                    ) : (
+                      items.map((item) => {
+                        const isLow = Number(item.currentStock) <= Number(item.minThreshold);
+                        return (
+                          <tr key={item.id} className="hover:bg-aura-900/20 transition-colors">
+                            <td className="py-3.5 px-5">
+                              <div className="font-semibold text-aura-50 text-sm">{item.itemName}</div>
+                              {isLow && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-rose-400 font-medium mt-0.5">
+                                  <AlertTriangle className="w-3 h-3" /> Low Stock Warning
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-5 font-mono text-xs text-aura-300 font-semibold">{item.sku}</td>
+                            <td className="py-3.5 px-5 capitalize text-xs text-aura-200 font-medium">
+                              {item.category.replace('_', ' ')}
+                            </td>
+                            <td className="py-3.5 px-5 font-bold text-sm">
+                              <span className={isLow ? 'text-rose-400' : 'text-emerald-400'}>
+                                {item.currentStock} {item.unit}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-5 text-xs text-aura-300 font-medium">
+                              {item.minThreshold} {item.unit}
+                            </td>
+                            <td className="py-3.5 px-5 text-xs text-aura-100 font-mono font-semibold">
+                              ₹{Number(item.costPerUnit).toFixed(2)}
+                            </td>
+                            <td className="py-3.5 px-5 text-right">
+                              <button
+                                onClick={() => setAdjustItem(item)}
+                                className="px-3 py-1.5 rounded-lg bg-caramel-500/15 hover:bg-caramel-500/25 text-caramel-400 border border-caramel-500/30 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
+                              >
+                                <ArrowUpDown className="w-3.5 h-3.5" />
+                                Adjust Stock
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Ledger Table */
+          <div className="bg-espresso-900/80 border border-aura-800/80 rounded-2xl shadow-xl overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-zinc-300">
-                <thead className="bg-zinc-950/60 text-xs font-semibold uppercase tracking-wider text-zinc-400 border-b border-zinc-800">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-espresso-950/80 text-[11px] font-semibold uppercase tracking-wider text-aura-400 border-b border-aura-800/80">
                   <tr>
-                    <th className="py-4 px-4">Item Name</th>
-                    <th className="py-4 px-4">SKU</th>
-                    <th className="py-4 px-4">Category</th>
-                    <th className="py-4 px-4">Current Stock</th>
-                    <th className="py-4 px-4">Threshold</th>
-                    <th className="py-4 px-4">Cost/Unit</th>
-                    <th className="py-4 px-4 text-right">Actions</th>
+                    <th className="py-3.5 px-5">Timestamp</th>
+                    <th className="py-3.5 px-5">Item</th>
+                    <th className="py-3.5 px-5">Type</th>
+                    <th className="py-3.5 px-5">Change</th>
+                    <th className="py-3.5 px-5">Balance</th>
+                    <th className="py-3.5 px-5">Notes</th>
+                    <th className="py-3.5 px-5">Author</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-800/60">
-                  {loading ? (
+                <tbody className="divide-y divide-aura-800/50 text-xs">
+                  {ledger.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-zinc-500">
-                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-amber-500" />
-                        Loading inventory...
-                      </td>
-                    </tr>
-                  ) : items.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-zinc-500">
-                        No inventory items found.
+                      <td colSpan={7} className="py-12 text-center text-aura-400">
+                        No ledger history recorded yet.
                       </td>
                     </tr>
                   ) : (
-                    items.map((item) => {
-                      const isLow = Number(item.currentStock) <= Number(item.minThreshold);
+                    ledger.map((entry) => {
+                      const isPositive = Number(entry.quantityChange) > 0;
                       return (
-                        <tr key={item.id} className="hover:bg-zinc-800/40 transition-colors">
-                          <td className="py-3.5 px-4">
-                            <div className="font-semibold text-zinc-100">{item.itemName}</div>
-                            {isLow && (
-                              <span className="inline-flex items-center gap-1 text-[11px] text-rose-400 font-medium">
-                                <AlertTriangle className="w-3 h-3" /> Low Stock
-                              </span>
-                            )}
+                        <tr key={entry.id} className="hover:bg-aura-900/20 transition-colors">
+                          <td className="py-3.5 px-5 text-aura-300 font-mono text-[11px]">
+                            {formatDate(entry.createdAt)}
                           </td>
-                          <td className="py-3.5 px-4 font-mono text-xs text-zinc-400">{item.sku}</td>
-                          <td className="py-3.5 px-4 capitalize text-xs text-zinc-300">
-                            {item.category.replace('_', ' ')}
+                          <td className="py-3.5 px-5 font-semibold text-aura-100">
+                            {entry.itemName || entry.sku}
                           </td>
-                          <td className="py-3.5 px-4 font-bold text-zinc-100">
-                            <span className={isLow ? 'text-rose-400' : 'text-emerald-400'}>
-                              {item.currentStock} {item.unit}
+                          <td className="py-3.5 px-5">
+                            <span className="capitalize px-2 py-0.5 rounded bg-espresso-950 text-aura-200 border border-aura-800 font-medium text-[11px]">
+                              {entry.changeType.replace('_', ' ')}
                             </span>
                           </td>
-                          <td className="py-3.5 px-4 text-xs text-zinc-400">
-                            {item.minThreshold} {item.unit}
+                          <td className="py-3.5 px-5 font-bold">
+                            <span className={`inline-flex items-center gap-1 ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {isPositive ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                              {isPositive ? '+' : ''}{entry.quantityChange}
+                            </span>
                           </td>
-                          <td className="py-3.5 px-4 text-xs text-zinc-300">
-                            ₹{Number(item.costPerUnit).toFixed(2)}
+                          <td className="py-3.5 px-5 text-aura-200 font-mono">
+                            {entry.previousStock} → <span className="font-bold text-aura-50">{entry.newStock}</span>
                           </td>
-                          <td className="py-3.5 px-4 text-right">
-                            <button
-                              onClick={() => setAdjustItem(item)}
-                              className="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
-                            >
-                              <ArrowUpDown className="w-3.5 h-3.5" />
-                              Adjust Stock
-                            </button>
+                          <td className="py-3.5 px-5 text-aura-300 italic">
+                            {entry.notes || '—'}
+                          </td>
+                          <td className="py-3.5 px-5 text-aura-300">
+                            {entry.createdBy || 'Admin'}
                           </td>
                         </tr>
                       );
@@ -287,151 +355,101 @@ export default function InventoryPage() {
               </table>
             </div>
           </div>
-        </>
-      ) : (
-        /* Ledger Table */
-        <div className="rounded-2xl bg-zinc-900/60 border border-zinc-800/80 overflow-hidden shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-zinc-300">
-              <thead className="bg-zinc-950/60 text-xs font-semibold uppercase tracking-wider text-zinc-400 border-b border-zinc-800">
-                <tr>
-                  <th className="py-4 px-4">Timestamp</th>
-                  <th className="py-4 px-4">Item</th>
-                  <th className="py-4 px-4">Type</th>
-                  <th className="py-4 px-4">Change</th>
-                  <th className="py-4 px-4">Balance</th>
-                  <th className="py-4 px-4">Notes</th>
-                  <th className="py-4 px-4">Author</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800/60">
-                {ledger.map((entry) => {
-                  const isPositive = Number(entry.quantityChange) > 0;
-                  return (
-                    <tr key={entry.id} className="hover:bg-zinc-800/40 transition-colors text-xs">
-                      <td className="py-3.5 px-4 text-zinc-400 font-mono">
-                        {new Date(entry.createdAt).toLocaleString()}
-                      </td>
-                      <td className="py-3.5 px-4 font-medium text-zinc-200">
-                        {entry.itemName || entry.sku}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className="capitalize px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700/50 font-medium">
-                          {entry.changeType.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 font-bold">
-                        <span className={`inline-flex items-center gap-1 ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {isPositive ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                          {isPositive ? '+' : ''}{entry.quantityChange}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-zinc-300 font-mono">
-                        {entry.previousStock} → <span className="font-bold text-zinc-100">{entry.newStock}</span>
-                      </td>
-                      <td className="py-3.5 px-4 text-zinc-400 italic">
-                        {entry.notes || '—'}
-                      </td>
-                      <td className="py-3.5 px-4 text-zinc-400">
-                        {entry.createdBy || 'Admin'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* Adjust Stock Modal */}
-      {adjustItem && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <form
-            onSubmit={handleAdjustSubmit}
-            className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-md p-6 space-y-5 shadow-2xl"
-          >
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
-              <div>
-                <h3 className="text-lg font-bold text-zinc-100">Stock Adjustment</h3>
-                <p className="text-xs text-zinc-400">{adjustItem.itemName} ({adjustItem.sku})</p>
+        {/* Adjust Stock Modal */}
+        {adjustItem && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <form
+              onSubmit={handleAdjustSubmit}
+              className="bg-espresso-900 border border-aura-800 rounded-3xl w-full max-w-md p-6 space-y-5 shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-aura-800 pb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-aura-50">Stock Adjustment</h3>
+                  <p className="text-xs text-aura-300 font-mono mt-0.5">{adjustItem.itemName} ({adjustItem.sku})</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAdjustItem(null)}
+                  className="text-aura-400 hover:text-aura-50 text-lg leading-none p-1"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setAdjustItem(null)}
-                className="text-zinc-400 hover:text-zinc-100"
-              >
-                ✕
-              </button>
-            </div>
 
-            <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800 flex items-center justify-between text-xs">
-              <span className="text-zinc-400">Current Stock:</span>
-              <span className="font-bold text-zinc-100 text-sm">
-                {adjustItem.currentStock} {adjustItem.unit}
-              </span>
-            </div>
+              <div className="p-3.5 rounded-2xl bg-espresso-950 border border-aura-800 flex items-center justify-between text-xs">
+                <span className="text-aura-400 font-medium">Current Stock Level:</span>
+                <span className="font-bold text-aura-50 text-sm">
+                  {adjustItem.currentStock} {adjustItem.unit}
+                </span>
+              </div>
 
-            <div className="space-y-3">
-              <label className="text-xs font-semibold text-zinc-300 block">Adjustment Reason / Type</label>
-              <select
-                value={adjustType}
-                onChange={(e) => setAdjustType(e.target.value as LedgerChangeType)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 text-xs focus:outline-none focus:border-amber-500"
-              >
-                <option value="restock">Restock (+ Supply Inflow)</option>
-                <option value="sale_usage">Sale Usage (- Consumption)</option>
-                <option value="adjustment">Manual Correction (Count Mismatch)</option>
-                <option value="wastage">Wastage / Spoilage (- Loss)</option>
-                <option value="return">Supplier Return</option>
-              </select>
-            </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-aura-200 block uppercase tracking-wider">
+                  Adjustment Reason / Type
+                </label>
+                <select
+                  value={adjustType}
+                  onChange={(e) => setAdjustType(e.target.value as LedgerChangeType)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-espresso-950 border border-aura-800 text-aura-100 text-xs focus:outline-none focus:border-caramel-500 cursor-pointer"
+                >
+                  <option value="restock">Restock (+ Supply Inflow)</option>
+                  <option value="sale_usage">Sale Usage (- Consumption)</option>
+                  <option value="adjustment">Manual Correction (Count Mismatch)</option>
+                  <option value="wastage">Wastage / Spoilage (- Loss)</option>
+                  <option value="return">Supplier Return</option>
+                </select>
+              </div>
 
-            <div className="space-y-3">
-              <label className="text-xs font-semibold text-zinc-300 block">
-                Quantity ({adjustItem.unit})
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                min="0.1"
-                required
-                value={adjustQuantity}
-                onChange={(e) => setAdjustQuantity(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-100 text-sm focus:outline-none focus:border-amber-500"
-              />
-            </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-aura-200 block uppercase tracking-wider">
+                  Quantity ({adjustItem.unit})
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  required
+                  value={adjustQuantity}
+                  onChange={(e) => setAdjustQuantity(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-espresso-950 border border-aura-800 text-aura-50 text-sm focus:outline-none focus:border-caramel-500 font-mono"
+                />
+              </div>
 
-            <div className="space-y-3">
-              <label className="text-xs font-semibold text-zinc-300 block">Audit Note / PO #</label>
-              <input
-                type="text"
-                placeholder="e.g., Weekly supplier batch #924"
-                value={adjustNotes}
-                onChange={(e) => setAdjustNotes(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 text-xs placeholder-zinc-500 focus:outline-none focus:border-amber-500"
-              />
-            </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-aura-200 block uppercase tracking-wider">
+                  Audit Note / PO #
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Weekly supplier batch #924"
+                  value={adjustNotes}
+                  onChange={(e) => setAdjustNotes(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-espresso-950 border border-aura-800 text-aura-100 text-xs placeholder:text-aura-500 focus:outline-none focus:border-caramel-500"
+                />
+              </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setAdjustItem(null)}
-                className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-medium hover:bg-zinc-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 text-xs font-bold hover:brightness-110 shadow-lg shadow-amber-500/20"
-              >
-                {isSubmitting ? 'Recording...' : 'Commit Ledger Entry'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setAdjustItem(null)}
+                  className="px-4 py-2 rounded-xl bg-espresso-950 text-aura-300 text-xs font-medium hover:text-aura-50 border border-aura-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 rounded-xl bg-caramel-500 text-espresso-950 text-xs font-bold hover:bg-caramel-400 transition-all shadow-md"
+                >
+                  {isSubmitting ? 'Recording...' : 'Commit Ledger Entry'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+    </AdminLayout>
   );
 }

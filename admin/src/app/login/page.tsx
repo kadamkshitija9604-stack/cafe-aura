@@ -12,6 +12,7 @@ import { ROLE_DEFINITIONS, Role } from '@/types/rbac';
 function LoginFormContent() {
   const [email, setEmail] = useState('admin@cafeaura.com');
   const [password, setPassword] = useState('password123');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
@@ -23,14 +24,15 @@ function LoginFormContent() {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    const cleanEmail = email.trim().replace(/\s+/g, '');
+    if (!cleanEmail || !password) {
       error('Validation Error', 'Please fill in both email and password.');
       return;
     }
 
     try {
       setIsLoading(true);
-      await loginWithEmail(email, password);
+      await loginWithEmail(cleanEmail, password);
       success('Welcome Back', 'Signed in to Cafe Aura Admin.');
       router.push(redirect);
     } catch (err: any) {
@@ -81,12 +83,12 @@ function LoginFormContent() {
 
         {/* Login Card */}
         <div className="bg-espresso-900/90 border border-aura-800/80 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
-          <form onSubmit={handleEmailLogin} className="space-y-4">
+          <form onSubmit={handleEmailLogin} noValidate className="space-y-4">
             <Input
               label="Email Address"
-              type="email"
+              type="text"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value.replace(/\s+/g, ''))}
               placeholder="admin@cafeaura.com"
               icon={<Mail className="w-4 h-4" />}
               required
@@ -105,11 +107,30 @@ function LoginFormContent() {
                 </a>
               </div>
               <Input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 icon={<Lock className="w-4 h-4" />}
+                rightElement={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="text-aura-400 hover:text-aura-100 transition-colors"
+                  >
+                    {showPassword ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                }
                 required
               />
             </div>
@@ -197,10 +218,10 @@ function LoginFormContent() {
                 <button
                   type="button"
                   onClick={() => handleQuickDemoRole('viewer', 'viewer@cafeaura.com')}
-                  className="text-left p-2 rounded-lg bg-espresso-950 border border-zinc-500/30 hover:border-zinc-500 text-xs transition-colors"
+                  className="text-left p-2 rounded-lg bg-espresso-950 border border-aura-800 hover:border-aura-700 text-xs transition-colors"
                 >
-                  <p className="font-semibold text-zinc-300">Viewer</p>
-                  <p className="text-[10px] text-aura-400">Read-only</p>
+                  <p className="font-bold text-aura-100">Viewer</p>
+                  <p className="text-[10px] text-aura-300 font-medium">Read-only</p>
                 </button>
               </div>
             </div>

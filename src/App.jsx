@@ -1,8 +1,12 @@
 
 import React, {useState, useEffect, useRef} from 'react';
 import './App.css';
+import GalleryPage from './GalleryPage.jsx';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+const API_BASE_URL = (import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://cafe-aura-lovat.vercel.app/api' : 'http://localhost:3000/api')).replace(/\/$/, '');
+const ADMIN_PORTAL_URL = (import.meta.env.VITE_ADMIN_PORTAL_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://cafe-aura-lovat.vercel.app' : 'http://localhost:3000')).replace(/\/$/, '');
 
 /* ---------------- DATA ---------------- */
 const FEATURED = [
@@ -98,10 +102,10 @@ function Navbar({onNav, cartCount, onCart}){
           </div>
           <ul className="nav-links">
             {links.map(l=> <li key={l[1]}><a onClick={()=>go(l[1])} style={{cursor:'pointer'}}>{l[0]}</a></li>)}
-            <li><a href="http://localhost:3000/dashboard" target="_blank" rel="noreferrer" style={{color:'var(--caramel)', fontWeight:600}}>Admin ↗</a></li>
+            <li><a href={`${ADMIN_PORTAL_URL}/dashboard`} target="_blank" rel="noreferrer" style={{color:'var(--caramel)', fontWeight:600}}>Admin ↗</a></li>
           </ul>
           <div className="nav-cta" style={{display:'flex', gap:12, alignItems:'center'}}>
-            <a href="http://localhost:3000/dashboard" target="_blank" rel="noreferrer" className="btn btn-outline-light" style={{padding:'8px 16px', fontSize:13, textDecoration:'none'}}>Admin Portal</a>
+            <a href={`${ADMIN_PORTAL_URL}/dashboard`} target="_blank" rel="noreferrer" className="btn btn-outline-light" style={{padding:'8px 16px', fontSize:13, textDecoration:'none'}}>Admin Portal</a>
             <button className="btn btn-primary" onClick={()=>go('menu')}>Order Now</button>
           </div>
           <button className="hamburger" onClick={()=>setOpen(true)} aria-label="Open menu">
@@ -113,7 +117,7 @@ function Navbar({onNav, cartCount, onCart}){
       <div className={"mobile-menu" + (open?" open":"")}>
         <button className="cart-close" style={{position:'absolute', top:24, right:24, background:'rgba(250,244,233,0.15)', color:'#fff'}} onClick={()=>setOpen(false)}>✕</button>
         {links.map(l=> <a key={l[1]} onClick={()=>go(l[1])}>{l[0]}</a>)}
-        <a href="http://localhost:3000/dashboard" target="_blank" rel="noreferrer" style={{color:'var(--caramel)', fontWeight:700}}>Admin Portal ↗</a>
+        <a href={`${ADMIN_PORTAL_URL}/dashboard`} target="_blank" rel="noreferrer" style={{color:'var(--caramel)', fontWeight:700}}>Admin Portal ↗</a>
         <button className="btn btn-caramel" style={{marginTop:10}} onClick={()=>go('menu')}>Order Now</button>
       </div>
     </React.Fragment>
@@ -177,14 +181,14 @@ function useLiveMenu() {
 
   const fetchMenu = async () => {
     try {
-      let itemsRes = await fetch('/api/menu').catch(() => null);
+      let itemsRes = await fetch(`${API_BASE_URL}/menu`).catch(() => null);
       if (!itemsRes || !itemsRes.ok) {
-        itemsRes = await fetch('http://localhost:3000/api/menu').catch(() => null);
+        itemsRes = await fetch('/api/menu').catch(() => null);
       }
 
-      let catsRes = await fetch('/api/categories').catch(() => null);
+      let catsRes = await fetch(`${API_BASE_URL}/categories`).catch(() => null);
       if (!catsRes || !catsRes.ok) {
-        catsRes = await fetch('http://localhost:3000/api/categories').catch(() => null);
+        catsRes = await fetch('/api/categories').catch(() => null);
       }
 
       let items = null;
@@ -237,14 +241,15 @@ function useLiveMenu() {
           }
 
           const priceVal = typeof it.price === 'number' ? it.price : (parseFloat(String(it.price).replace(/[^0-9.]/g, '')) || 0);
-          const priceFormatted = '$' + priceVal.toFixed(2);
+          const inrPrice = priceVal < 20 && priceVal > 0 ? Math.round(priceVal * 45) : Math.round(priceVal);
+          const priceFormatted = '₹' + inrPrice;
 
           const formattedItem = {
             id: it.id || it.name,
             name: it.name,
             desc: it.description || it.desc || '',
             price: priceFormatted,
-            rawPrice: priceVal,
+            rawPrice: inrPrice,
             img: it.imageUrl || it.img || 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?q=80&w=500&auto=format&fit=crop',
             isAvailable: it.isAvailable !== false,
             isFeatured: !!it.isFeatured,
@@ -479,7 +484,7 @@ function About(){
 }
 
 /* ---------------- GALLERY ---------------- */
-function Gallery(){
+function Gallery({ onOpenFullGallery }){
   const labels = ["Coffee cup","Coffee beans","Café interior","Latte art","Desserts","Barista at work"];
   return (
     <section id="gallery" className="section-pad">
@@ -487,6 +492,7 @@ function Gallery(){
         <Reveal className="section-head">
           <div className="eyebrow">Peek Inside</div>
           <h2>A Little Coffee Gallery</h2>
+          <p>A glimpse into our daily craft, golden hour ambience and signature roasts.</p>
         </Reveal>
         <div className="gallery-grid">
           {GALLERY.map((src,i)=>(
@@ -495,6 +501,25 @@ function Gallery(){
             </Reveal>
           ))}
         </div>
+
+        <Reveal y={20} style={{textAlign:'center', marginTop: 36}}>
+          <button 
+            className="btn btn-caramel" 
+            onClick={onOpenFullGallery}
+            style={{
+              padding: '16px 36px',
+              fontSize: '15px',
+              fontWeight: '700',
+              boxShadow: '0 10px 30px rgba(201, 131, 46, 0.35)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+          >
+            <span>✨ Explore Full Dedicated Gallery (15+ Frames, Reels & Stories)</span>
+            <span>→</span>
+          </button>
+        </Reveal>
       </div>
     </section>
   );
@@ -656,17 +681,25 @@ function CheckoutModal({ open, items, onClose, onOrderPlaced }) {
         })),
       };
 
-      const res = await fetch('http://localhost:3000/api/orders', {
+      let res = await fetch(`${API_BASE_URL}/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      });
+      }).catch(() => null);
 
-      if (res.ok) {
+      if (!res || !res.ok) {
+        res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }).catch(() => null);
+      }
+
+      if (res && res.ok) {
         const json = await res.json();
         onOrderPlaced(json.data);
       } else {
-        const errJson = await res.json().catch(() => ({}));
+        const errJson = res ? await res.json().catch(() => ({})) : {};
         setErrorMsg(errJson.error?.message || 'Failed to submit order. Please try again.');
       }
     } catch (err) {
@@ -1035,7 +1068,7 @@ function AdminGatewayView(){
           }}>
             ← Return to Website
           </a>
-          <a href="http://localhost:3000/dashboard" target="_blank" rel="noreferrer" style={{
+          <a href={`${ADMIN_PORTAL_URL}/dashboard`} target="_blank" rel="noreferrer" style={{
             padding: '8px 18px',
             fontSize: 13,
             fontWeight: 600,
@@ -1052,7 +1085,7 @@ function AdminGatewayView(){
 
       <div style={{flex: 1, position: 'relative', width: '100%', height: 'calc(100vh - 69px)'}}>
         <iframe
-          src="http://localhost:3000/dashboard"
+          src={`${ADMIN_PORTAL_URL}/dashboard`}
           title="Cafe Aura Admin Panel"
           style={{
             width: '100%',
@@ -1074,13 +1107,17 @@ function App(){
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState(null);
   const [isAdminPath, setIsAdminPath] = useState(false);
+  const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'gallery'
 
   useEffect(()=>{
     ScrollTrigger.refresh();
     if (typeof window !== 'undefined') {
       const p = window.location.pathname.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
       if (p.includes('admin')) {
         setIsAdminPath(true);
+      } else if (p.includes('gallery') || hash.includes('gallery-page') || hash === '#gallery') {
+        setCurrentPage('gallery');
       }
     }
   },[]);
@@ -1098,6 +1135,19 @@ function App(){
   };
 
   const navTo = (id)=>{
+    if (id === 'gallery' || id === 'gallery-page') {
+      setCurrentPage('gallery');
+      window.scrollTo({top: 0, behavior: 'smooth'});
+      return;
+    }
+    if (currentPage !== 'home') {
+      setCurrentPage('home');
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+      }, 100);
+      return;
+    }
     const el = document.getElementById(id);
     if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
   };
@@ -1110,17 +1160,30 @@ function App(){
 
   return (
     <React.Fragment>
-      <Navbar onNav={navTo} cartCount={cart.length} onCart={()=>setCartOpen(true)} />
-      <Hero onNav={navTo} />
-      <Featured onAdd={addToCart} featuredData={featuredData} />
-      <Process />
-      <Offer onNav={navTo} />
-      <Menu onAdd={addToCart} menuData={menuData} categoriesList={categoriesList} />
-      <About />
-      <Gallery />
-      <Testimonials />
-      <Newsletter />
-      <Footer onNav={navTo} />
+      {currentPage === 'gallery' ? (
+        <GalleryPage
+          onBackToHome={() => {
+            setCurrentPage('home');
+            window.scrollTo({top: 0, behavior: 'smooth'});
+          }}
+          onAddToCart={addToCart}
+          cartCount={cart.length}
+          onOpenCart={() => setCartOpen(true)}
+        />
+      ) : (
+        <React.Fragment>
+          <Navbar onNav={navTo} cartCount={cart.length} onCart={()=>setCartOpen(true)} />
+          <Hero onNav={navTo} />
+          <Featured onAdd={addToCart} featuredData={featuredData} />
+          <Process />
+          <Offer onNav={navTo} />
+          <Menu onAdd={addToCart} menuData={menuData} categoriesList={categoriesList} />
+          <About />
+          <Testimonials />
+          <Newsletter />
+          <Footer onNav={navTo} />
+        </React.Fragment>
+      )}
 
       <Cart
         items={cart}

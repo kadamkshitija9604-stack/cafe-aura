@@ -36,7 +36,6 @@ const DEFAULT_DEMO_USER: AdminUser = {
   uid: 'demo-admin-01',
   email: 'admin@cafeaura.com',
   displayName: 'Elena Rostova (Super Admin)',
-  photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
   role: 'super_admin',
   status: 'active',
   providerId: 'password',

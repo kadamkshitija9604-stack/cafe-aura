@@ -45,9 +45,9 @@ export async function query<T = any>(text: string, params?: any[]): Promise<T[]>
       console.log('Executed query', { text: text.slice(0, 60), duration, rows: res.rowCount });
     }
     return res.rows;
-  } catch (error) {
-    console.error('Database query error:', { text, error });
-    throw error;
+  } catch (error: any) {
+    console.error('Database query execution failure:', error.message || 'Unknown database error');
+    throw new Error('Database operation failed');
   }
 }
 

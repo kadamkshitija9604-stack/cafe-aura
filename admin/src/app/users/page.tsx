@@ -144,17 +144,8 @@ export default function UsersPage() {
                   <tr key={u.uid} className="hover:bg-aura-900/20 transition-colors">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-aura-800 border border-aura-700 flex items-center justify-center font-bold text-aura-200 shrink-0">
-                          {u.photoURL ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={u.photoURL}
-                              alt={u.displayName}
-                              className="w-full h-full rounded-full object-cover"
-                            />
-                          ) : (
-                            u.displayName[0]
-                          )}
+                        <div className="w-8 h-8 rounded-full bg-caramel-500/15 border border-caramel-500/30 flex items-center justify-center font-bold text-xs text-caramel-300 shrink-0">
+                          {u.displayName?.[0]?.toUpperCase() || 'U'}
                         </div>
                         <div>
                           <p className="font-semibold text-aura-50 flex items-center gap-2">
