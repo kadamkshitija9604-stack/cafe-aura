@@ -15,30 +15,46 @@ export type AuthResult =
   | { authorized: true; response: null; auth: AuthContext }
   | { authorized: false; response: NextResponse; auth: AuthContext | null };
 
+import { SESSION_COOKIE_NAME, verifySessionToken } from '@/lib/auth/session';
+
 /**
  * Extracts and verifies caller authentication context from HTTP request.
  * Returns null if no valid credentials/identity are provided.
  */
-export function getAuthContext(req: NextRequest): AuthContext | null {
+export async function getAuthContext(req: NextRequest): Promise<AuthContext | null> {
+  // 1. Check HTTP-only session cookie
+  const sessionCookie = req.cookies.get(SESSION_COOKIE_NAME)?.value;
+  if (sessionCookie) {
+    const session = await verifySessionToken(sessionCookie);
+    if (session) {
+      return {
+        userId: session.uid,
+        userEmail: session.email,
+        userName: session.displayName,
+        role: session.role,
+      };
+    }
+  }
+
+  // 2. Check Bearer Token if present
+  const authHeader = req.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    const session = await verifySessionToken(token);
+    if (session) {
+      return {
+        userId: session.uid,
+        userEmail: session.email,
+        userName: session.displayName,
+        role: session.role,
+      };
+    }
+  }
+
   const roleHeader = req.headers.get('x-user-role') as Role | null;
   const userId = req.headers.get('x-user-id');
   const userEmail = req.headers.get('x-user-email');
   const userName = req.headers.get('x-user-name');
-
-  // Check Bearer Token if present
-  const authHeader = req.headers.get('authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    // In demo/dev, token can encode role or user ID
-    if (token) {
-      return {
-        userId: userId || 'auth-user',
-        userEmail: userEmail || 'user@cafeaura.com',
-        userName: userName || 'Authenticated User',
-        role: (roleHeader && ROLE_DEFINITIONS[roleHeader] ? roleHeader : 'admin') as Role,
-      };
-    }
-  }
 
   // If explicit role and user headers are provided and role is valid in RBAC dictionary
   if (roleHeader && ROLE_DEFINITIONS[roleHeader] && userId) {
@@ -68,7 +84,7 @@ export async function enforcePermission(
     details: string;
   }
 ): Promise<AuthResult> {
-  const auth = getAuthContext(req);
+  const auth = await getAuthContext(req);
 
   if (!auth) {
     return {

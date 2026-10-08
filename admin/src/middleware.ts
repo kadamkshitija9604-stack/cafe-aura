@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { SESSION_COOKIE_NAME, verifySessionToken } from '@/lib/auth/session';
 
 // In-memory sliding window rate limiter
 interface RateLimitEntry {
@@ -33,15 +34,45 @@ const ALLOWED_ORIGINS = [
   process.env.NEXT_PUBLIC_ADMIN_URL,
 ].filter(Boolean) as string[];
 
-export function middleware(req: NextRequest) {
+// Public web paths that unauthenticated users are allowed to access
+const PUBLIC_WEB_PATHS = ['/login', '/forgot-password', '/unauthorized'];
+
+// Public API endpoints
+const PUBLIC_API_PATHS = [
+  '/api/auth/login',
+  '/api/auth/logout',
+  '/api/auth/session',
+  '/api/health',
+];
+
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const origin = req.headers.get('origin');
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '127.0.0.1';
 
-  // 1. Handle API routes
+  // 1. Static files & Next.js internal files
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/static') ||
+    pathname.endsWith('.ico') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.jpg') ||
+    pathname.endsWith('.jpeg') ||
+    pathname.endsWith('.svg') ||
+    pathname.endsWith('.mp4') ||
+    pathname.endsWith('.webp')
+  ) {
+    return NextResponse.next();
+  }
+
+  // 2. Handle API routes
   if (pathname.startsWith('/api')) {
     // A. Rate Limiting Check
-    const isMutatingOrSensitive = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method) || pathname.startsWith('/api/users') || pathname.startsWith('/api/staff');
+    const isMutatingOrSensitive =
+      ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method) ||
+      pathname.startsWith('/api/users') ||
+      pathname.startsWith('/api/staff') ||
+      pathname.startsWith('/api/auth/login');
     const limit = isMutatingOrSensitive ? STRICT_MAX_REQUESTS : MAX_REQUESTS_PER_WINDOW;
     const rateLimitKey = `${ip}:${pathname.split('/')[2] || 'root'}:${req.method}`;
 
@@ -78,7 +109,9 @@ export function middleware(req: NextRequest) {
     }
 
     // B. CORS Preflight & Headers
-    const isAllowedOrigin = origin ? (ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed)) || origin.endsWith('.vercel.app')) : true;
+    const isAllowedOrigin = origin
+      ? ALLOWED_ORIGINS.some((allowed) => origin.startsWith(allowed)) || origin.endsWith('.vercel.app')
+      : true;
 
     if (req.method === 'OPTIONS') {
       const response = new NextResponse(null, { status: 204 });
@@ -86,10 +119,46 @@ export function middleware(req: NextRequest) {
         response.headers.set('Access-Control-Allow-Origin', origin);
         response.headers.set('Access-Control-Allow-Credentials', 'true');
         response.headers.set('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-        response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id, x-user-role, x-user-email, x-user-name');
+        response.headers.set(
+          'Access-Control-Allow-Headers',
+          'Content-Type, Authorization, x-user-id, x-user-role, x-user-email, x-user-name'
+        );
         response.headers.set('Access-Control-Max-Age', '86400');
       }
       return response;
+    }
+
+    // C. Check API Authentication for non-public API endpoints
+    const isPublicApi =
+      PUBLIC_API_PATHS.some((p) => pathname.startsWith(p)) ||
+      (pathname === '/api/menu' && req.method === 'GET') ||
+      (pathname === '/api/categories' && req.method === 'GET');
+
+    if (!isPublicApi) {
+      const sessionToken =
+        req.cookies.get(SESSION_COOKIE_NAME)?.value ||
+        (req.headers.get('authorization')?.startsWith('Bearer ')
+          ? req.headers.get('authorization')?.substring(7)
+          : null);
+
+      const session = await verifySessionToken(sessionToken);
+      const hasDevHeaders = req.headers.get('x-user-id') && req.headers.get('x-user-role');
+
+      if (!session && !hasDevHeaders) {
+        return new NextResponse(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Authentication required. Please log in.',
+            },
+          }),
+          {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
     }
 
     const response = NextResponse.next();
@@ -105,13 +174,42 @@ export function middleware(req: NextRequest) {
     return response;
   }
 
-  // 2. Global Security Headers for Non-API Web Pages
+  // 3. Web Page Authentication & Security Boundary
+  const sessionToken = req.cookies.get(SESSION_COOKIE_NAME)?.value;
+  const session = await verifySessionToken(sessionToken);
+  const isAuthenticated = !!session;
+
+  // Handle Root route `/`
+  if (pathname === '/') {
+    if (isAuthenticated) {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    } else {
+      return NextResponse.redirect(new URL('/login', req.url));
+    }
+  }
+
+  // If user is already authenticated and tries to open /login or /forgot-password
+  if (isAuthenticated && (pathname === '/login' || pathname === '/forgot-password')) {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
+  }
+
+  // If user is NOT authenticated and tries to access ANY protected route
+  const isPublicPage = PUBLIC_WEB_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  if (!isAuthenticated && !isPublicPage) {
+    const loginUrl = new URL('/login', req.url);
+    if (pathname !== '/dashboard') {
+      loginUrl.searchParams.set('redirect', pathname);
+    }
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Global Security Headers for Allowed Web Pages
   const response = NextResponse.next();
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  
+
   return response;
 }
 

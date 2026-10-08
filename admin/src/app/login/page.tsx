@@ -34,7 +34,7 @@ function LoginFormContent() {
       setIsLoading(true);
       await loginWithEmail(cleanEmail, password);
       success('Welcome Back', 'Signed in to Cafe Aura Admin.');
-      router.push(redirect);
+      window.location.href = redirect;
     } catch (err: any) {
       error('Login Failed', err.message || 'Invalid email or password.');
     } finally {
@@ -47,7 +47,7 @@ function LoginFormContent() {
       setIsGoogleLoading(true);
       await loginWithGoogle();
       success('Welcome Back', 'Signed in via Google Authentication.');
-      router.push(redirect);
+      window.location.href = redirect;
     } catch (err: any) {
       error('Google Sign-In Failed', err.message || 'Could not complete Google authentication.');
     } finally {
@@ -57,8 +57,7 @@ function LoginFormContent() {
 
   const handleQuickDemoRole = (role: Role, demoEmail: string) => {
     setEmail(demoEmail);
-    setPassword('password123');
-    setDemoRole(role);
+    setPassword('admin123');
   };
 
   return (

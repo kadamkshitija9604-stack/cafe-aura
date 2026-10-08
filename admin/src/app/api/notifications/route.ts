@@ -5,7 +5,7 @@ import { getAuthContext } from '@/lib/permissions/authGuard';
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = getAuthContext(req);
+    const auth = await getAuthContext(req);
     const role = auth?.role || 'all';
 
     const { searchParams } = new URL(req.url);

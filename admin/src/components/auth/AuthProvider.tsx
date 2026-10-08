@@ -31,32 +31,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Initial fallback mock admin
-const DEFAULT_DEMO_USER: AdminUser = {
-  uid: 'demo-admin-01',
-  email: 'admin@cafeaura.com',
-  displayName: 'Elena Rostova (Super Admin)',
-  role: 'super_admin',
-  status: 'active',
-  providerId: 'password',
-  createdAt: '2024-01-01T00:00:00.000Z',
-  lastLoginAt: new Date().toISOString(),
-};
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [role, setRole] = useState<Role>('super_admin');
+  const [role, setRole] = useState<Role>('viewer');
   const [isLoading, setIsLoading] = useState(true);
   const isDemoMode = !isFirebaseConfigured;
 
   useEffect(() => {
+    // 1. If Firebase Auth is configured in environment
     if (isFirebaseConfigured && auth) {
       const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
         setFirebaseUser(fbUser);
         if (fbUser) {
           try {
-            // Fetch user profile & role from Firestore
             if (db) {
               const userDocRef = doc(db, 'users', fbUser.uid);
               const userSnap = await getDoc(userDocRef);
@@ -65,13 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(userData);
                 setRole(userData.role || 'viewer');
               } else {
-                // New user - default to viewer or super_admin if first
                 const newUser: AdminUser = {
                   uid: fbUser.uid,
                   email: fbUser.email || '',
                   displayName: fbUser.displayName || 'Admin User',
                   photoURL: fbUser.photoURL || undefined,
-                  role: 'super_admin', // First user super admin
+                  role: 'super_admin',
                   status: 'active',
                   providerId: fbUser.providerData[0]?.providerId === 'google.com' ? 'google.com' : 'password',
                   createdAt: new Date().toISOString(),
@@ -83,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             }
           } catch (err) {
-            console.error("Error loading user profile:", err);
+            console.error('Error loading user profile:', err);
           }
         } else {
           setUser(null);
@@ -92,29 +79,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       return () => unsubscribe();
     } else {
-      // Demo / Local Mode - clear any old legacy auto-login data
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('cafe_aura_current_user');
-      }
-
-      const activeSession = typeof window !== 'undefined' ? sessionStorage.getItem('cafe_aura_authenticated_user') : null;
-      if (activeSession) {
+      // 2. Production Server Session Validation via HTTP-only cookie
+      async function checkServerSession() {
         try {
-          const parsed = JSON.parse(activeSession);
-          if (parsed && parsed.email) {
-            setUser(parsed);
-            setRole(parsed.role || 'super_admin');
+          const res = await fetch('/api/auth/session', {
+            method: 'GET',
+            credentials: 'include',
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.authenticated && data.user) {
+              setUser(data.user);
+              setRole(data.user.role || 'viewer');
+            } else {
+              setUser(null);
+            }
           } else {
             setUser(null);
           }
-        } catch {
+        } catch (err) {
           setUser(null);
-          sessionStorage.removeItem('cafe_aura_authenticated_user');
+        } finally {
+          setIsLoading(false);
         }
-      } else {
-        setUser(null);
       }
-      setIsLoading(false);
+
+      checkServerSession();
     }
   }, []);
 
@@ -122,42 +113,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       if (isFirebaseConfigured && auth) {
-        const cred = await signInWithEmailAndPassword(auth, email, pass);
-        // Firestore fetch handled by onAuthStateChanged
+        await signInWithEmailAndPassword(auth, email, pass);
       } else {
-        // Demo mode login - validate email & password
-        let assignedRole: Role = role || 'super_admin';
-        const lowerEmail = email.toLowerCase();
-        if (lowerEmail.includes('superadmin') || lowerEmail === 'admin@cafeaura.com') {
-          assignedRole = 'super_admin';
-        } else if (lowerEmail.includes('manager') && !lowerEmail.includes('menu')) {
-          assignedRole = 'manager';
-        } else if (lowerEmail.includes('menu')) {
-          assignedRole = 'menu_manager';
-        } else if (lowerEmail.includes('viewer')) {
-          assignedRole = 'viewer';
+        // Authenticate against server endpoint which verifies credentials and sets secure cookie
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, password: pass }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          const errorMessage = data?.error?.message || data?.message || 'Invalid email or password';
+          throw new Error(errorMessage);
         }
 
-        const loggedUser: AdminUser = {
-          ...DEFAULT_DEMO_USER,
-          email,
-          role: assignedRole,
-          displayName: email.split('@')[0].toUpperCase(),
-          lastLoginAt: new Date().toISOString(),
-        };
-        setUser(loggedUser);
-        setRole(assignedRole);
-        sessionStorage.setItem('cafe_aura_authenticated_user', JSON.stringify(loggedUser));
+        setUser(data.user);
+        setRole(data.user.role || 'viewer');
       }
 
       await auditService.logAction({
-        userId: user?.uid || 'demo-user',
-        userName: user?.displayName || 'Admin',
+        userId: user?.uid || 'authenticated-user',
+        userName: user?.displayName || email,
         userEmail: email,
         userRole: role,
         action: 'AUTH_LOGIN',
         resourceType: 'auth',
-        details: `Administrator login with email ${email}`,
+        details: `Administrator sign in with email ${email}`,
       });
     } finally {
       setIsLoading(false);
@@ -170,27 +154,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (isFirebaseConfigured && auth && googleProvider) {
         await signInWithPopup(auth, googleProvider);
       } else {
-        const googleDemoUser: AdminUser = {
-          ...DEFAULT_DEMO_USER,
-          email: 'google.admin@cafeaura.com',
-          displayName: 'Google Admin User',
-          providerId: 'google.com',
-          lastLoginAt: new Date().toISOString(),
-        };
-        setUser(googleDemoUser);
-        setRole(googleDemoUser.role);
-        sessionStorage.setItem('cafe_aura_authenticated_user', JSON.stringify(googleDemoUser));
+        throw new Error('Google OAuth requires Firebase configuration.');
       }
-
-      await auditService.logAction({
-        userId: user?.uid || 'demo-google-user',
-        userName: user?.displayName || 'Google Admin',
-        userEmail: user?.email || 'google.admin@cafeaura.com',
-        userRole: role,
-        action: 'AUTH_LOGIN',
-        resourceType: 'auth',
-        details: `Google OAuth login`,
-      });
     } finally {
       setIsLoading(false);
     }
@@ -202,20 +167,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (isFirebaseConfigured && auth) {
         await signOut(auth);
       } else {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+        }).catch(() => {});
         setUser(null);
-        sessionStorage.removeItem('cafe_aura_authenticated_user');
-        localStorage.removeItem('cafe_aura_current_user');
       }
 
-      await auditService.logAction({
-        userId: user?.uid || 'user',
-        userName: user?.displayName || 'Admin',
-        userEmail: user?.email || '',
-        userRole: role,
-        action: 'AUTH_LOGOUT',
-        resourceType: 'auth',
-        details: 'User logged out',
-      });
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('cafe_aura_current_user');
+        sessionStorage.removeItem('cafe_aura_authenticated_user');
+        window.location.href = '/login';
+      }
     } finally {
       setIsLoading(false);
     }
@@ -239,9 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setDemoRole = (newRole: Role) => {
     setRole(newRole);
     if (user) {
-      const updated = { ...user, role: newRole };
-      setUser(updated);
-      sessionStorage.setItem('cafe_aura_authenticated_user', JSON.stringify(updated));
+      setUser({ ...user, role: newRole });
     }
   };
 
