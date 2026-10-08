@@ -92,21 +92,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       return () => unsubscribe();
     } else {
-      // Demo / Local Mode
-      const savedUser = localStorage.getItem('cafe_aura_current_user');
-      if (savedUser) {
+      // Demo / Local Mode - clear any old legacy auto-login data
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('cafe_aura_current_user');
+      }
+
+      const activeSession = typeof window !== 'undefined' ? sessionStorage.getItem('cafe_aura_authenticated_user') : null;
+      if (activeSession) {
         try {
-          const parsed = JSON.parse(savedUser);
-          setUser(parsed);
-          setRole(parsed.role || 'super_admin');
+          const parsed = JSON.parse(activeSession);
+          if (parsed && parsed.email) {
+            setUser(parsed);
+            setRole(parsed.role || 'super_admin');
+          } else {
+            setUser(null);
+          }
         } catch {
-          setUser(DEFAULT_DEMO_USER);
-          setRole('super_admin');
+          setUser(null);
+          sessionStorage.removeItem('cafe_aura_authenticated_user');
         }
       } else {
-        setUser(DEFAULT_DEMO_USER);
-        setRole('super_admin');
-        localStorage.setItem('cafe_aura_current_user', JSON.stringify(DEFAULT_DEMO_USER));
+        setUser(null);
       }
       setIsLoading(false);
     }
@@ -119,16 +125,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const cred = await signInWithEmailAndPassword(auth, email, pass);
         // Firestore fetch handled by onAuthStateChanged
       } else {
-        // Demo mode login
+        // Demo mode login - validate email & password
+        let assignedRole: Role = role || 'super_admin';
+        const lowerEmail = email.toLowerCase();
+        if (lowerEmail.includes('superadmin') || lowerEmail === 'admin@cafeaura.com') {
+          assignedRole = 'super_admin';
+        } else if (lowerEmail.includes('manager') && !lowerEmail.includes('menu')) {
+          assignedRole = 'manager';
+        } else if (lowerEmail.includes('menu')) {
+          assignedRole = 'menu_manager';
+        } else if (lowerEmail.includes('viewer')) {
+          assignedRole = 'viewer';
+        }
+
         const loggedUser: AdminUser = {
           ...DEFAULT_DEMO_USER,
           email,
+          role: assignedRole,
           displayName: email.split('@')[0].toUpperCase(),
           lastLoginAt: new Date().toISOString(),
         };
         setUser(loggedUser);
-        setRole(loggedUser.role);
-        localStorage.setItem('cafe_aura_current_user', JSON.stringify(loggedUser));
+        setRole(assignedRole);
+        sessionStorage.setItem('cafe_aura_authenticated_user', JSON.stringify(loggedUser));
       }
 
       await auditService.logAction({
@@ -160,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setUser(googleDemoUser);
         setRole(googleDemoUser.role);
-        localStorage.setItem('cafe_aura_current_user', JSON.stringify(googleDemoUser));
+        sessionStorage.setItem('cafe_aura_authenticated_user', JSON.stringify(googleDemoUser));
       }
 
       await auditService.logAction({
@@ -184,6 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await signOut(auth);
       } else {
         setUser(null);
+        sessionStorage.removeItem('cafe_aura_authenticated_user');
         localStorage.removeItem('cafe_aura_current_user');
       }
 
@@ -221,7 +241,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       const updated = { ...user, role: newRole };
       setUser(updated);
-      localStorage.setItem('cafe_aura_current_user', JSON.stringify(updated));
+      sessionStorage.setItem('cafe_aura_authenticated_user', JSON.stringify(updated));
     }
   };
 

@@ -102,10 +102,8 @@ function Navbar({onNav, cartCount, onCart}){
           </div>
           <ul className="nav-links">
             {links.map(l=> <li key={l[1]}><a onClick={()=>go(l[1])} style={{cursor:'pointer'}}>{l[0]}</a></li>)}
-            <li><a href={`${ADMIN_PORTAL_URL}/dashboard`} target="_blank" rel="noreferrer" style={{color:'var(--caramel)', fontWeight:600}}>Admin ↗</a></li>
           </ul>
           <div className="nav-cta" style={{display:'flex', gap:12, alignItems:'center'}}>
-            <a href={`${ADMIN_PORTAL_URL}/dashboard`} target="_blank" rel="noreferrer" className="btn btn-outline-light" style={{padding:'8px 16px', fontSize:13, textDecoration:'none'}}>Admin Portal</a>
             <button className="btn btn-primary" onClick={()=>go('menu')}>Order Now</button>
           </div>
           <button className="hamburger" onClick={()=>setOpen(true)} aria-label="Open menu">
@@ -117,7 +115,6 @@ function Navbar({onNav, cartCount, onCart}){
       <div className={"mobile-menu" + (open?" open":"")}>
         <button className="cart-close" style={{position:'absolute', top:24, right:24, background:'rgba(250,244,233,0.15)', color:'#fff'}} onClick={()=>setOpen(false)}>✕</button>
         {links.map(l=> <a key={l[1]} onClick={()=>go(l[1])}>{l[0]}</a>)}
-        <a href={`${ADMIN_PORTAL_URL}/dashboard`} target="_blank" rel="noreferrer" style={{color:'var(--caramel)', fontWeight:700}}>Admin Portal ↗</a>
         <button className="btn btn-caramel" style={{marginTop:10}} onClick={()=>go('menu')}>Order Now</button>
       </div>
     </React.Fragment>
@@ -620,7 +617,7 @@ function Footer({onNav}){
           </div>
         </div>
         <div className="foot-bottom">
-          <p>&copy; 2026 Cafe Aura. All rights reserved.</p>
+          <p>&copy; 2026 Cafe Aura. All rights reserved. &bull; <a href={`${ADMIN_PORTAL_URL}/login`} target="_blank" rel="noreferrer" style={{color:'rgba(250,244,233,0.35)', textDecoration:'none', fontSize:'12px'}}>Staff Portal</a></p>
           <div className="socials">
             <a href="#">FB</a><a href="#">IG</a><a href="#">IN</a><a href="#">YT</a>
           </div>
