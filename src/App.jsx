@@ -118,7 +118,7 @@ function Navbar({onNav, cartCount, onCart, currentUser, onOpenLogin, onLogout}){
             {links.map(l=> <li key={l[1]}><a onClick={()=>go(l[1])} style={{cursor:'pointer'}}>{l[0]}</a></li>)}
           </ul>
           <div className="nav-cta" style={{display:'flex', gap:12, alignItems:'center'}}>
-            {currentUser ? (
+            {currentUser && (
               <div className="user-menu-container" style={{position: 'relative'}}>
                 <button
                   type="button"
@@ -228,24 +228,6 @@ function Navbar({onNav, cartCount, onCart, currentUser, onOpenLogin, onLogout}){
                   </div>
                 )}
               </div>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-outline-light"
-                onClick={onOpenLogin}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 16px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  border: '1px solid rgba(229,163,88,0.5)',
-                  color: '#e5a358'
-                }}
-              >
-                <span>🔒</span> Staff Login
-              </button>
             )}
             <button className="btn btn-primary" onClick={()=>go('menu')}>Order Now</button>
           </div>
@@ -258,22 +240,13 @@ function Navbar({onNav, cartCount, onCart, currentUser, onOpenLogin, onLogout}){
       <div className={"mobile-menu" + (open?" open":"")}>
         <button className="cart-close" style={{position:'absolute', top:24, right:24, background:'rgba(250,244,233,0.15)', color:'#fff'}} onClick={()=>setOpen(false)}>✕</button>
         {links.map(l=> <a key={l[1]} onClick={()=>go(l[1])}>{l[0]}</a>)}
-        {currentUser ? (
+        {currentUser && (
           <div style={{marginTop: 12, padding: '12px', background: 'rgba(250,244,233,0.06)', borderRadius: 12, textAlign: 'left'}}>
             <div style={{fontSize: 14, fontWeight: 700, color: '#faf7f2'}}>👤 {currentUser.displayName}</div>
             <div style={{fontSize: 12, color: '#c5925e', marginBottom: 8}}>{currentUser.email}</div>
             <a href={`${ADMIN_PORTAL_URL}/dashboard`} target="_blank" rel="noreferrer" style={{display: 'block', color: '#e5a358', fontWeight: 600, fontSize: 13, marginBottom: 8}}>📊 Admin Dashboard ↗</a>
             <button onClick={()=>{ setOpen(false); onLogout(); }} style={{background: 'none', border: 'none', color: '#f87171', fontSize: 13, padding: 0, cursor: 'pointer'}}>🚪 Sign Out</button>
           </div>
-        ) : (
-          <button
-            type="button"
-            className="btn btn-outline-light"
-            style={{marginTop: 12, width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6}}
-            onClick={()=>{ setOpen(false); onOpenLogin(); }}
-          >
-            <span>🔒</span> Staff Login
-          </button>
         )}
         <button className="btn btn-caramel" style={{marginTop:10}} onClick={()=>go('menu')}>Order Now</button>
       </div>
@@ -779,21 +752,16 @@ function Footer({onNav, onOpenLogin, currentUser}){
         <div className="foot-bottom">
           <p>
             &copy; 2026 Cafe Aura. All rights reserved. &bull;{' '}
-            <button
-              type="button"
-              onClick={onOpenLogin}
+            <a
+              href="/admin"
               style={{
-                background: 'none',
-                border: 'none',
-                color: '#e5a358',
-                cursor: 'pointer',
-                fontSize: '12px',
-                padding: 0,
-                textDecoration: 'underline'
+                color: 'rgba(250,244,233,0.35)',
+                textDecoration: 'none',
+                fontSize: '12px'
               }}
             >
-              {currentUser ? `Staff Portal (${currentUser.displayName})` : 'Staff Portal & Login'}
-            </button>
+              Admin Portal
+            </a>
           </p>
           <div className="socials">
             <a href="#">FB</a><a href="#">IG</a><a href="#">IN</a><a href="#">YT</a>
@@ -1202,7 +1170,13 @@ function Cart({items, open, onClose, onRemove, onOpenCheckout}){
 }
 
 /* ---------------- ADMIN GATEWAY ---------------- */
-function AdminGatewayView({ currentUser, onOpenLogin, onLogout }){
+function AdminGatewayView(){
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.location.href = `${ADMIN_PORTAL_URL}/login`;
+    }
+  }, []);
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -1210,105 +1184,51 @@ function AdminGatewayView({ currentUser, onOpenLogin, onLogout }){
       color: '#faf7f2',
       display: 'flex',
       flexDirection: 'column',
-      fontFamily: 'Inter, system-ui, sans-serif'
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      padding: '24px',
+      textAlign: 'center'
     }}>
       <div style={{
-        padding: '16px 24px',
-        backgroundColor: '#140c07',
-        borderBottom: '1px solid rgba(183,122,74,0.3)',
+        width: 64,
+        height: 64,
+        borderRadius: 16,
+        background: 'linear-gradient(135deg, #e5a358, #8c4c1a)',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: 12
+        justifyContent: 'center',
+        fontSize: 32,
+        marginBottom: 20,
+        boxShadow: '0 8px 24px rgba(229,163,88,0.3)'
       }}>
-        <div style={{display: 'flex', alignItems: 'center', gap: 12}}>
-          <img src="/logo.png" style={{width: 36, height: 36, borderRadius: 8, objectFit: 'cover'}} alt="Cafe Aura" />
-          <div>
-            <h1 style={{fontSize: 16, fontWeight: 700, margin: 0, color: '#faf7f2'}}>Cafe Aura Admin Portal</h1>
-            <p style={{fontSize: 12, margin: 0, color: '#c5925e'}}>Next.js Enterprise Management Console</p>
-          </div>
-        </div>
-
-        <div style={{display: 'flex', alignItems: 'center', gap: 12}}>
-          {currentUser ? (
-            <div style={{display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)'}}>
-              <span style={{width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block'}} />
-              <span style={{fontSize: 12, color: '#faf7f2', fontWeight: 600}}>
-                {currentUser.displayName} ({(currentUser.role || 'staff').replace('_', ' ')})
-              </span>
-              <button
-                type="button"
-                onClick={onLogout}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#f87171',
-                  fontSize: 12,
-                  marginLeft: 6,
-                  cursor: 'pointer',
-                  fontWeight: 600
-                }}
-              >
-                Sign Out
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={onOpenLogin}
-              style={{
-                padding: '8px 16px',
-                fontSize: 13,
-                fontWeight: 600,
-                color: '#e5a358',
-                backgroundColor: 'rgba(229,163,88,0.15)',
-                border: '1px solid rgba(229,163,88,0.4)',
-                borderRadius: 8,
-                cursor: 'pointer'
-              }}
-            >
-              🔒 Sign In to Backend
-            </button>
-          )}
-
-          <a href="/" style={{
-            padding: '8px 16px',
-            fontSize: 13,
-            color: '#dec7a8',
-            backgroundColor: 'rgba(250,244,233,0.08)',
-            border: '1px solid rgba(250,244,233,0.2)',
-            borderRadius: 8,
-            textDecoration: 'none'
-          }}>
-            ← Return to Website
-          </a>
-          <a href={`${ADMIN_PORTAL_URL}/dashboard`} target="_blank" rel="noreferrer" style={{
-            padding: '8px 18px',
-            fontSize: 13,
-            fontWeight: 600,
-            color: '#0c0704',
-            background: 'linear-gradient(to right, #e5a358, #c5925e)',
-            borderRadius: 8,
-            textDecoration: 'none',
-            boxShadow: '0 4px 12px rgba(229,163,88,0.25)'
-          }}>
-            Open in Dedicated Window ↗
-          </a>
-        </div>
+        ☕
       </div>
-
-      <div style={{flex: 1, position: 'relative', width: '100%', height: 'calc(100vh - 69px)'}}>
-        <iframe
-          src={`${ADMIN_PORTAL_URL}/dashboard`}
-          title="Cafe Aura Admin Panel"
-          style={{
-            width: '100%',
-            height: '100%',
-            border: 'none',
-            display: 'block'
-          }}
-        />
+      <h1 style={{fontSize: 24, fontWeight: 700, margin: '0 0 8px', color: '#faf7f2'}}>
+        Opening Cafe Aura Admin Portal...
+      </h1>
+      <p style={{fontSize: 14, color: '#c5925e', margin: '0 0 24px'}}>
+        Redirecting to secure management portal
+      </p>
+      <a
+        href={`${ADMIN_PORTAL_URL}/login`}
+        style={{
+          padding: '12px 24px',
+          borderRadius: 12,
+          background: 'linear-gradient(135deg, #e5a358, #c5925e)',
+          color: '#0c0704',
+          fontWeight: 700,
+          textDecoration: 'none',
+          fontSize: 14,
+          boxShadow: '0 4px 14px rgba(229, 163, 88, 0.35)'
+        }}
+      >
+        Click here if not redirected automatically ↗
+      </a>
+      <div style={{marginTop: 24}}>
+        <a href="/" style={{color: '#998471', fontSize: 13, textDecoration: 'none'}}>
+          ← Return to Website
+        </a>
       </div>
     </div>
   );
@@ -1394,24 +1314,7 @@ function App(){
   },[]);
 
   if (isAdminPath) {
-    return (
-      <React.Fragment>
-        <AdminGatewayView
-          currentUser={currentUser}
-          onOpenLogin={() => setLoginModalOpen(true)}
-          onLogout={handleLogout}
-        />
-        <StaffLoginModal
-          open={loginModalOpen}
-          onClose={() => setLoginModalOpen(false)}
-          currentUser={currentUser}
-          onLoginSuccess={handleLoginSuccess}
-          onLogout={handleLogout}
-          apiBaseUrl={API_BASE_URL}
-          adminPortalUrl={ADMIN_PORTAL_URL}
-        />
-      </React.Fragment>
-    );
+    return <AdminGatewayView />;
   }
 
   const addToCart = (item)=>{
