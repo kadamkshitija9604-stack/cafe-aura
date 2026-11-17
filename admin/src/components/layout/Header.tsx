@@ -27,7 +27,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
 
         {/* Link to public website */}
         <a
-          href="http://localhost:5173"
+          href={process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://cafe-aura-mgxg.vercel.app' : 'http://localhost:5173')}
           target="_blank"
           rel="noreferrer"
           className="flex items-center gap-1.5 text-xs text-aura-300 hover:text-aura-50 bg-aura-900/50 hover:bg-aura-800/60 border border-aura-700/50 px-3 py-1.5 rounded-xl transition-all"

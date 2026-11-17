@@ -2,6 +2,7 @@
 import React, {useState, useEffect, useRef} from 'react';
 import './App.css';
 import GalleryPage from './GalleryPage.jsx';
+import StaffLoginModal from './StaffLoginModal.jsx';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -78,15 +79,28 @@ function StarRow({n}){
 }
 
 /* ---------------- NAV ---------------- */
-function Navbar({onNav, cartCount, onCart}){
+function Navbar({onNav, cartCount, onCart, currentUser, onOpenLogin, onLogout}){
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   useEffect(()=>{
     const onScroll = ()=> setScrolled(window.scrollY > 30);
     window.addEventListener('scroll', onScroll);
     return ()=> window.removeEventListener('scroll', onScroll);
   },[]);
+
+  // Close dropdown on outside click
+  useEffect(()=>{
+    if (!userMenuOpen) return;
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.user-menu-container')) {
+        setUserMenuOpen(false);
+      }
+    };
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  },[userMenuOpen]);
 
   const links = [["Home","home"],["Menu","menu"],["About","about"],["Gallery","gallery"],["Contact","footer"]];
 
@@ -104,6 +118,135 @@ function Navbar({onNav, cartCount, onCart}){
             {links.map(l=> <li key={l[1]}><a onClick={()=>go(l[1])} style={{cursor:'pointer'}}>{l[0]}</a></li>)}
           </ul>
           <div className="nav-cta" style={{display:'flex', gap:12, alignItems:'center'}}>
+            {currentUser ? (
+              <div className="user-menu-container" style={{position: 'relative'}}>
+                <button
+                  type="button"
+                  onClick={(e)=>{ e.stopPropagation(); setUserMenuOpen(prev => !prev); }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '7px 14px',
+                    borderRadius: '24px',
+                    background: 'rgba(229,163,88,0.16)',
+                    border: '1px solid rgba(229,163,88,0.45)',
+                    color: '#faf7f2',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                  }}
+                  title="Signed into Cafe Aura Backend"
+                >
+                  <span style={{width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block'}} />
+                  <span>{currentUser.displayName || currentUser.email}</span>
+                  <span style={{
+                    fontSize: '10px',
+                    background: '#c5925e',
+                    color: '#0c0704',
+                    padding: '2px 7px',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    textTransform: 'capitalize'
+                  }}>
+                    {(currentUser.role || 'staff').replace('_', ' ')}
+                  </span>
+                  <span style={{fontSize: '10px', color: '#e5a358'}}>▾</span>
+                </button>
+
+                {userMenuOpen && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    width: '240px',
+                    backgroundColor: '#140c07',
+                    border: '1px solid rgba(183,122,74,0.4)',
+                    borderRadius: '14px',
+                    boxShadow: '0 16px 40px rgba(0,0,0,0.75)',
+                    padding: '8px 0',
+                    zIndex: 300,
+                    color: '#faf7f2',
+                    textAlign: 'left'
+                  }}>
+                    <div style={{padding: '10px 16px', borderBottom: '1px solid rgba(250,244,233,0.1)'}}>
+                      <div style={{fontSize: '13px', fontWeight: 700, color: '#faf7f2'}}>{currentUser.displayName}</div>
+                      <div style={{fontSize: '11px', color: '#c5925e'}}>{currentUser.email}</div>
+                    </div>
+                    <a
+                      href={`${ADMIN_PORTAL_URL}/dashboard`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', color: '#dec7a8', textDecoration: 'none', fontSize: '13px'}}
+                      onMouseEnter={(e)=>e.currentTarget.style.backgroundColor='rgba(229,163,88,0.15)'}
+                      onMouseLeave={(e)=>e.currentTarget.style.backgroundColor='transparent'}
+                    >
+                      <span>📊</span> Admin Dashboard ↗
+                    </a>
+                    <a
+                      href={`${ADMIN_PORTAL_URL}/orders`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', color: '#dec7a8', textDecoration: 'none', fontSize: '13px'}}
+                      onMouseEnter={(e)=>e.currentTarget.style.backgroundColor='rgba(229,163,88,0.15)'}
+                      onMouseLeave={(e)=>e.currentTarget.style.backgroundColor='transparent'}
+                    >
+                      <span>🛍️</span> Manage Orders ↗
+                    </a>
+                    <a
+                      href={`${ADMIN_PORTAL_URL}/menu`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', color: '#dec7a8', textDecoration: 'none', fontSize: '13px'}}
+                      onMouseEnter={(e)=>e.currentTarget.style.backgroundColor='rgba(229,163,88,0.15)'}
+                      onMouseLeave={(e)=>e.currentTarget.style.backgroundColor='transparent'}
+                    >
+                      <span>☕</span> Manage Menu ↗
+                    </a>
+                    <div style={{borderTop: '1px solid rgba(250,244,233,0.1)', marginTop: 4, paddingTop: 4}}>
+                      <button
+                        type="button"
+                        onClick={()=>{ setUserMenuOpen(false); onLogout(); }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '10px 16px',
+                          color: '#f87171',
+                          background: 'none',
+                          border: 'none',
+                          fontSize: '13px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <span>🚪</span> Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-outline-light"
+                onClick={onOpenLogin}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 16px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  border: '1px solid rgba(229,163,88,0.5)',
+                  color: '#e5a358'
+                }}
+              >
+                <span>🔒</span> Staff Login
+              </button>
+            )}
             <button className="btn btn-primary" onClick={()=>go('menu')}>Order Now</button>
           </div>
           <button className="hamburger" onClick={()=>setOpen(true)} aria-label="Open menu">
@@ -115,6 +258,23 @@ function Navbar({onNav, cartCount, onCart}){
       <div className={"mobile-menu" + (open?" open":"")}>
         <button className="cart-close" style={{position:'absolute', top:24, right:24, background:'rgba(250,244,233,0.15)', color:'#fff'}} onClick={()=>setOpen(false)}>✕</button>
         {links.map(l=> <a key={l[1]} onClick={()=>go(l[1])}>{l[0]}</a>)}
+        {currentUser ? (
+          <div style={{marginTop: 12, padding: '12px', background: 'rgba(250,244,233,0.06)', borderRadius: 12, textAlign: 'left'}}>
+            <div style={{fontSize: 14, fontWeight: 700, color: '#faf7f2'}}>👤 {currentUser.displayName}</div>
+            <div style={{fontSize: 12, color: '#c5925e', marginBottom: 8}}>{currentUser.email}</div>
+            <a href={`${ADMIN_PORTAL_URL}/dashboard`} target="_blank" rel="noreferrer" style={{display: 'block', color: '#e5a358', fontWeight: 600, fontSize: 13, marginBottom: 8}}>📊 Admin Dashboard ↗</a>
+            <button onClick={()=>{ setOpen(false); onLogout(); }} style={{background: 'none', border: 'none', color: '#f87171', fontSize: 13, padding: 0, cursor: 'pointer'}}>🚪 Sign Out</button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-outline-light"
+            style={{marginTop: 12, width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6}}
+            onClick={()=>{ setOpen(false); onOpenLogin(); }}
+          >
+            <span>🔒</span> Staff Login
+          </button>
+        )}
         <button className="btn btn-caramel" style={{marginTop:10}} onClick={()=>go('menu')}>Order Now</button>
       </div>
     </React.Fragment>
@@ -578,7 +738,7 @@ function Newsletter(){
 }
 
 /* ---------------- FOOTER ---------------- */
-function Footer({onNav}){
+function Footer({onNav, onOpenLogin, currentUser}){
   return (
     <footer id="footer">
       <div className="wrap">
@@ -617,7 +777,24 @@ function Footer({onNav}){
           </div>
         </div>
         <div className="foot-bottom">
-          <p>&copy; 2026 Cafe Aura. All rights reserved. &bull; <a href={`${ADMIN_PORTAL_URL}/login`} target="_blank" rel="noreferrer" style={{color:'rgba(250,244,233,0.35)', textDecoration:'none', fontSize:'12px'}}>Staff Portal</a></p>
+          <p>
+            &copy; 2026 Cafe Aura. All rights reserved. &bull;{' '}
+            <button
+              type="button"
+              onClick={onOpenLogin}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#e5a358',
+                cursor: 'pointer',
+                fontSize: '12px',
+                padding: 0,
+                textDecoration: 'underline'
+              }}
+            >
+              {currentUser ? `Staff Portal (${currentUser.displayName})` : 'Staff Portal & Login'}
+            </button>
+          </p>
           <div className="socials">
             <a href="#">FB</a><a href="#">IG</a><a href="#">IN</a><a href="#">YT</a>
           </div>
@@ -1025,7 +1202,7 @@ function Cart({items, open, onClose, onRemove, onOpenCheckout}){
 }
 
 /* ---------------- ADMIN GATEWAY ---------------- */
-function AdminGatewayView(){
+function AdminGatewayView({ currentUser, onOpenLogin, onLogout }){
   return (
     <div style={{
       minHeight: '100vh',
@@ -1054,6 +1231,47 @@ function AdminGatewayView(){
         </div>
 
         <div style={{display: 'flex', alignItems: 'center', gap: 12}}>
+          {currentUser ? (
+            <div style={{display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)'}}>
+              <span style={{width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block'}} />
+              <span style={{fontSize: 12, color: '#faf7f2', fontWeight: 600}}>
+                {currentUser.displayName} ({(currentUser.role || 'staff').replace('_', ' ')})
+              </span>
+              <button
+                type="button"
+                onClick={onLogout}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#f87171',
+                  fontSize: 12,
+                  marginLeft: 6,
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenLogin}
+              style={{
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#e5a358',
+                backgroundColor: 'rgba(229,163,88,0.15)',
+                border: '1px solid rgba(229,163,88,0.4)',
+                borderRadius: 8,
+                cursor: 'pointer'
+              }}
+            >
+              🔒 Sign In to Backend
+            </button>
+          )}
+
           <a href="/" style={{
             padding: '8px 16px',
             fontSize: 13,
@@ -1105,6 +1323,62 @@ function App(){
   const [confirmedOrder, setConfirmedOrder] = useState(null);
   const [isAdminPath, setIsAdminPath] = useState(false);
   const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'gallery'
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+
+  // Restore authenticated session from localStorage & verify with backend
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const storedUser = localStorage.getItem('cafe_aura_user');
+        const token = localStorage.getItem('cafe_aura_token');
+        if (storedUser) {
+          try {
+            setCurrentUser(JSON.parse(storedUser));
+          } catch (_) {}
+        }
+
+        // Validate session against backend API
+        fetch(`${API_BASE_URL}/auth/session`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: 'include'
+        })
+          .then(res => {
+            if (res.ok) return res.json();
+            return null;
+          })
+          .then(data => {
+            if (data && data.authenticated && data.user) {
+              setCurrentUser(data.user);
+              localStorage.setItem('cafe_aura_user', JSON.stringify(data.user));
+            }
+          })
+          .catch(() => {});
+      } catch (_) {}
+    }
+  }, []);
+
+  const handleLoginSuccess = (user, token) => {
+    setCurrentUser(user);
+    setLoginModalOpen(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('cafe_aura_token') : null;
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include'
+      }).catch(() => {});
+    } catch (_) {}
+
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cafe_aura_user');
+      localStorage.removeItem('cafe_aura_token');
+    }
+    setCurrentUser(null);
+  };
 
   useEffect(()=>{
     ScrollTrigger.refresh();
@@ -1120,7 +1394,24 @@ function App(){
   },[]);
 
   if (isAdminPath) {
-    return <AdminGatewayView />;
+    return (
+      <React.Fragment>
+        <AdminGatewayView
+          currentUser={currentUser}
+          onOpenLogin={() => setLoginModalOpen(true)}
+          onLogout={handleLogout}
+        />
+        <StaffLoginModal
+          open={loginModalOpen}
+          onClose={() => setLoginModalOpen(false)}
+          currentUser={currentUser}
+          onLoginSuccess={handleLoginSuccess}
+          onLogout={handleLogout}
+          apiBaseUrl={API_BASE_URL}
+          adminPortalUrl={ADMIN_PORTAL_URL}
+        />
+      </React.Fragment>
+    );
   }
 
   const addToCart = (item)=>{
@@ -1169,7 +1460,14 @@ function App(){
         />
       ) : (
         <React.Fragment>
-          <Navbar onNav={navTo} cartCount={cart.length} onCart={()=>setCartOpen(true)} />
+          <Navbar
+            onNav={navTo}
+            cartCount={cart.length}
+            onCart={()=>setCartOpen(true)}
+            currentUser={currentUser}
+            onOpenLogin={() => setLoginModalOpen(true)}
+            onLogout={handleLogout}
+          />
           <Hero onNav={navTo} />
           <Featured onAdd={addToCart} featuredData={featuredData} />
           <Process />
@@ -1178,7 +1476,11 @@ function App(){
           <About />
           <Testimonials />
           <Newsletter />
-          <Footer onNav={navTo} />
+          <Footer
+            onNav={navTo}
+            currentUser={currentUser}
+            onOpenLogin={() => setLoginModalOpen(true)}
+          />
         </React.Fragment>
       )}
 
@@ -1200,6 +1502,16 @@ function App(){
       <OrderSuccessModal
         order={confirmedOrder}
         onClose={()=>setConfirmedOrder(null)}
+      />
+
+      <StaffLoginModal
+        open={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+        currentUser={currentUser}
+        onLoginSuccess={handleLoginSuccess}
+        onLogout={handleLogout}
+        apiBaseUrl={API_BASE_URL}
+        adminPortalUrl={ADMIN_PORTAL_URL}
       />
     </React.Fragment>
   );

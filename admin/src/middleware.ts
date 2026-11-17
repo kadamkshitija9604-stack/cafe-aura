@@ -132,7 +132,8 @@ export async function middleware(req: NextRequest) {
     const isPublicApi =
       PUBLIC_API_PATHS.some((p) => pathname.startsWith(p)) ||
       (pathname === '/api/menu' && req.method === 'GET') ||
-      (pathname === '/api/categories' && req.method === 'GET');
+      (pathname === '/api/categories' && req.method === 'GET') ||
+      (pathname === '/api/orders' && req.method === 'POST');
 
     if (!isPublicApi) {
       const sessionToken =
@@ -205,7 +206,15 @@ export async function middleware(req: NextRequest) {
 
   // Global Security Headers for Allowed Web Pages
   const response = NextResponse.next();
-  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  const referer = req.headers.get('referer') || '';
+  const isEmbedAllowed = (origin && ALLOWED_ORIGINS.some((allowed) => origin.startsWith(allowed))) ||
+                         (referer && ALLOWED_ORIGINS.some((allowed) => referer.startsWith(allowed)));
+
+  if (!isEmbedAllowed) {
+    response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  } else {
+    response.headers.set('Content-Security-Policy', "frame-ancestors 'self' http://localhost:5173 http://127.0.0.1:5173 https://cafe-aura-mgxg.vercel.app https://cafe-aura-lovat.vercel.app;");
+  }
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');

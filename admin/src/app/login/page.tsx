@@ -69,6 +69,14 @@ function LoginFormContent() {
       <div className="w-full max-w-md relative z-10">
         {/* Branding header */}
         <div className="text-center mb-8">
+          <div className="mb-3">
+            <a
+              href={process.env.NEXT_PUBLIC_SITE_URL || 'https://cafe-aura-mgxg.vercel.app'}
+              className="inline-flex items-center gap-1.5 text-xs text-caramel-400 hover:text-caramel-300 transition-colors bg-espresso-900/60 px-3 py-1.5 rounded-full border border-aura-800/80"
+            >
+              <span>← Return to Cafe Aura Website</span>
+            </a>
+          </div>
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-caramel-600 to-caramel-400 text-espresso-950 font-bold shadow-xl shadow-caramel-500/20 mb-4">
             <Coffee className="w-8 h-8" />
           </div>
@@ -190,6 +198,17 @@ function LoginFormContent() {
                 <span>Quick Test Logins (Demo RBAC)</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuickDemoRole('super_admin', 'kadamkshitija9604@gmail.com')}
+                  className="col-span-2 text-left p-2.5 rounded-lg bg-espresso-950 border border-caramel-500/50 hover:border-caramel-400 text-xs transition-colors flex items-center justify-between"
+                >
+                  <div>
+                    <p className="font-bold text-caramel-300">👑 Kshitija Kadam (Owner)</p>
+                    <p className="text-[10px] text-aura-400">kadamkshitija9604@gmail.com &bull; Super Admin</p>
+                  </div>
+                  <span className="text-[10px] bg-caramel-500/20 text-caramel-300 font-semibold px-2 py-0.5 rounded">Owner</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleQuickDemoRole('super_admin', 'superadmin@cafeaura.com')}
